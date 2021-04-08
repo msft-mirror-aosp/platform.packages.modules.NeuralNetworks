@@ -389,7 +389,9 @@ int ExecutionBuilder::getDuration(int32_t durationCode, uint64_t* duration) cons
     }();
     if (selectedDuration.has_value()) {
         constexpr uint64_t kMaxTiming = std::numeric_limits<uint64_t>::max() - 1;
-        *duration = std::min(selectedDuration.value().count(), kMaxTiming);
+        using CommonType = std::common_type_t<Duration::rep, uint64_t>;
+        const auto count = std::min<CommonType>(selectedDuration.value().count(), kMaxTiming);
+        *duration = static_cast<uint64_t>(count);
     } else {
         constexpr uint64_t kNoTiming = std::numeric_limits<uint64_t>::max();
         *duration = kNoTiming;
@@ -1193,10 +1195,10 @@ bool StepExecutor::updateOutputShapes(int executionResultCode, const std::vector
                     changedShape = mDynamicTemporaries->redeclare(sourceOperandIndex,
                                                                   from[i].dimensions, actualSize);
                 } else if (!from[i].isSufficient) {
-                    NN_RET_CHECK(loc->length < UINT32_MAX / 2)
-                            << "output#" << i << " length overflow";
+                    NN_RET_CHECK(loc->paddedLength < UINT32_MAX / 2)
+                            << "output#" << i << " paddedLength overflow";
                     changedShape = mDynamicTemporaries->redeclare(
-                            sourceOperandIndex, from[i].dimensions, 2 * loc->length);
+                            sourceOperandIndex, from[i].dimensions, 2 * loc->paddedLength);
                 } else {
                     // The combination of not-fully-specified dimensions
                     // and isSufficient means that we have no
@@ -1311,20 +1313,18 @@ void StepExecutor::mapInputOrOutput(const ModelArgumentInfo& builderInputOrOutpu
 
 int StepExecutor::setInputOrOutputFromMemory(const Operand& inputOrOutputOperand,
                                              const RuntimeMemory* memory, uint32_t offset,
-                                             const Dimensions& dimensions,
-                                             std::optional<uint32_t> length,
+                                             uint32_t length, const Dimensions& dimensions,
                                              ModelArgumentInfo* inputOrOutputInfo) {
     // Should be similar to
     //     ExecutionBuilder::setInputFromMemory()
     //     ExecutionBuilder::setOutputFromMemory()
 
     uint32_t poolIndex = mMemories.add(memory);
-    uint32_t lengthVal = length.value_or(TypeManager::get()->getSizeOfData(inputOrOutputOperand));
     CHECK(inputOrOutputInfo->unspecified());
     int n;
     std::tie(n, *inputOrOutputInfo) =
             ModelArgumentInfo::createFromMemory(inputOrOutputOperand,
-                                                /*type=*/nullptr, poolIndex, offset, lengthVal);
+                                                /*type=*/nullptr, poolIndex, offset, length);
     if (n == ANEURALNETWORKS_NO_ERROR && dimensions.size()) {
         CHECK(isUpdatable(inputOrOutputInfo->dimensions(), dimensions));
         inputOrOutputInfo->dimensions() = dimensions;

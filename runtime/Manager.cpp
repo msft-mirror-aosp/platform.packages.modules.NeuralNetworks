@@ -158,8 +158,8 @@ class DriverPreparedModel : public RuntimePreparedModel {
         return mPreparedModel->configureExecutionBurst();
     }
 
-    std::pair<uint32_t, uint32_t> getMemoryPreference() const override {
-        if (mDevice->getFeatureLevel() >= __ANDROID_API_S__) {
+    MemoryPreference getMemoryPreference() const override {
+        if (mDevice->getFeatureLevel() >= ANEURALNETWORKS_FEATURE_LEVEL_5) {
             return {kDefaultRequestMemoryAlignment, kDefaultRequestMemoryPadding};
         } else {
             // We are not able to pass memory padding information to HIDL drivers, so return the
@@ -545,7 +545,7 @@ std::tuple<int, std::vector<OutputShape>, Timing> DriverPreparedModel::execute(
 
         VLOG(EXECUTION) << "Before burstController->execute() " << SHOW_IF_DEBUG(request);
 
-        result = burstController->execute(request, measure);
+        result = burstController->execute(request, measure, deadline, loopTimeoutDuration);
     } else {
         result = mPreparedModel->execute(request, measure, deadline, loopTimeoutDuration);
     }
@@ -801,7 +801,7 @@ class CpuPreparedModel : public RuntimePreparedModel {
             const OptionalDuration& loopTimeoutDuration,
             const OptionalDuration& timeoutDurationAfterFence) const override;
 
-    std::pair<uint32_t, uint32_t> getMemoryPreference() const override {
+    MemoryPreference getMemoryPreference() const override {
         return {kPreferredAlignment, kPreferredPadding};
     }
 
