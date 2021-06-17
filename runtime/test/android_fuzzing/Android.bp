@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "packages_modules_NeuralNetworks_runtime_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: [
+        "packages_modules_NeuralNetworks_runtime_license",
+    ],
+}
+
 cc_library_static {
     name: "libneuralnetworks_fuzzer_proto",
     owner: "google",
@@ -23,6 +34,44 @@ cc_library_static {
         export_proto_headers: true,
     },
     shared_libs: ["libprotobuf-cpp-full"],
+}
+
+cc_library_static {
+    name: "libneuralnetworks_fuzzer_harness",
+    owner: "google",
+    srcs: [
+        "Converter.cpp",
+        "FuzzHarness.cpp",
+        "StaticAssert.cpp",
+    ],
+    shared_libs: [
+        "android.hidl.memory@1.0",
+        "libhidlmemory",
+        "libnativewindow",
+        "libprotobuf-cpp-full",
+    ],
+    static_libs: [
+        "libneuralnetworks_common",
+        "libneuralnetworks_generated_test_harness",
+        "libneuralnetworks_static",
+    ],
+    whole_static_libs: [
+        "libneuralnetworks_fuzzer_proto",
+        "libprotobuf-mutator",
+        "neuralnetworks_types",
+    ],
+}
+
+filegroup {
+    name: "libneuralnetworks_fuzzer_corpus",
+    srcs: ["corpus/*"],
+}
+
+cc_defaults {
+    name: "libneuralnetworks_fuzzer_defaults",
+    shared_libs: ["libprotobuf-cpp-full"],
+    static_libs: ["libneuralnetworks_fuzzer_harness"],
+    corpus: [":libneuralnetworks_fuzzer_corpus"],
 }
 
 // The following host binary is disabled because the genrule that uses this
