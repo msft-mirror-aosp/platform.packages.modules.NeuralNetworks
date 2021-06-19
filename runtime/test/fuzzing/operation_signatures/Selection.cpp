@@ -114,9 +114,9 @@ DEFINE_OPERATION_SIGNATURE(HASHTABLE_LOOKUP_V1_0){
 
 static void gatherConstructor(TestOperandType, uint32_t rank, RandomOperation* op) {
     // Generate value for "axis" scalar.
-    int32_t axis = getUniform<int32_t>(-rank, rank - 1);
+    int32_t axis = getRandomAxis(rank);
     op->inputs[1]->setScalarValue<int32_t>(axis);
-    if (axis < 0) axis += rank;
+    axis = toPositiveAxis(axis, rank);
 
     // Set dimensions for input and indices tensor.
     uint32_t indRank = getUniform<uint32_t>(1, 5);
@@ -137,7 +137,7 @@ static void gatherConstructor(TestOperandType, uint32_t rank, RandomOperation* o
 
 static void gatherFinalizer(RandomOperation* op) {
     int32_t axis = op->inputs[1]->value<int32_t>();
-    if (axis < 0) axis += op->inputs[0]->dimensions.size();
+    axis = toPositiveAxis(axis, op->inputs[0]->dimensions.size());
     uint32_t dimValue = op->inputs[0]->dimensions[axis].getValue();
     uint32_t numElements = op->inputs[2]->getNumberOfElements();
     for (uint32_t i = 0; i < numElements; i++) {
@@ -238,6 +238,15 @@ static void sliceFinalizer(RandomOperation* op) {
     uint32_t rank = op->inputs[0]->dimensions.size();
     int32_t* begin = reinterpret_cast<int32_t*>(op->inputs[1]->buffer.data());
     int32_t* size = reinterpret_cast<int32_t*>(op->inputs[2]->buffer.data());
+
+    NN_FUZZER_CHECK(op->inputs[1]->buffer.size() >= rank)
+            << "input[1] buffer size " << op->inputs[1]->buffer.size() << " is smaller than rank "
+            << rank;
+
+    NN_FUZZER_CHECK(op->inputs[2]->buffer.size() >= rank)
+            << "input[1] buffer size " << op->inputs[2]->buffer.size() << " is smaller than rank "
+            << rank;
+
     for (uint32_t i = 0; i < rank; i++) {
         int32_t inputSize = op->inputs[0]->dimensions[i].getValue();
         int32_t outputSize = op->outputs[0]->dimensions[i].getValue();
@@ -298,6 +307,15 @@ static void stridedSliceFinalizer(RandomOperation* op) {
     int32_t* begin = reinterpret_cast<int32_t*>(op->inputs[1]->buffer.data());
     int32_t* end = reinterpret_cast<int32_t*>(op->inputs[2]->buffer.data());
     std::vector<bool> beginMask(rank, false), endMask(rank, false);
+
+    NN_FUZZER_CHECK(op->inputs[1]->buffer.size() >= rank)
+            << "input[1] buffer size " << op->inputs[1]->buffer.size() << " is smaller than rank "
+            << rank;
+
+    NN_FUZZER_CHECK(op->inputs[2]->buffer.size() >= rank)
+            << "input[1] buffer size " << op->inputs[2]->buffer.size() << " is smaller than rank "
+            << rank;
+
     int32_t shrinkMask = op->inputs[6]->value<int32_t>();
     for (uint32_t i = 0, o = 0; i < rank; i++) {
         int32_t inputSize = op->inputs[0]->dimensions[i].getValue();
