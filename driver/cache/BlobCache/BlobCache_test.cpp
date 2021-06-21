@@ -14,7 +14,10 @@
  ** limitations under the License.
  */
 
+#include "BlobCache.h"
+
 #include <fcntl.h>
+#include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -22,10 +25,6 @@
 #include <memory>
 #include <numeric>
 #include <random>
-
-#include <gtest/gtest.h>
-
-#include "BlobCache.h"
 
 namespace android {
 
@@ -51,7 +50,7 @@ class BlobCacheTest : public ::testing::TestWithParam<BlobCache::Policy> {
     std::unique_ptr<BlobCache> mBC;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
         Policy, BlobCacheTest,
         ::testing::Values(
                 BlobCache::Policy(BlobCache::Select::RANDOM, BlobCache::Capacity::HALVE),
@@ -513,7 +512,7 @@ class BlobCacheFlattenTest : public BlobCacheTest {
     sp<BlobCache> mBC2;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
         Policy, BlobCacheFlattenTest,
         ::testing::Values(
                 BlobCache::Policy(BlobCache::Select::RANDOM, BlobCache::Capacity::HALVE),

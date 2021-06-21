@@ -17,16 +17,16 @@
 #define LOG_TAG "nnCache_test"
 //#define LOG_NDEBUG 0
 
-#include <stdlib.h>
-#include <string.h>
-
-#include <memory>
+#include "nnCache.h"
 
 #include <android-base/file.h>
 #include <gtest/gtest.h>
 #include <log/log.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "nnCache.h"
+#include <algorithm>
+#include <memory>
 
 // Cache size limits.
 static const size_t maxKeySize = 12 * 1024;
@@ -47,7 +47,7 @@ class NNCacheTest : public ::testing::TestWithParam<NNCache::Policy> {
     NNCache* mCache;
 };
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
         Policy, NNCacheTest,
         ::testing::Values(NNCache::Policy(NNCache::Select::RANDOM, NNCache::Capacity::HALVE),
                           NNCache::Policy(NNCache::Select::LRU, NNCache::Capacity::HALVE),
