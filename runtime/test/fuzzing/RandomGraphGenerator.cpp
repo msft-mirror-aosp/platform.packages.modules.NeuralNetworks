@@ -44,7 +44,7 @@ using namespace test_helper;
 RandomOperand::RandomOperand(const OperandSignature& operand, TestOperandType dataType,
                              uint32_t rank)
     : type(operand.type), finalizer(operand.finalizer) {
-    NN_FUZZER_LOG << "Operand: " << toString(type);
+    NN_FUZZER_LOG << "Operand: " << type;
     if (operand.constructor) operand.constructor(dataType, rank, this);
 }
 
@@ -81,7 +81,7 @@ size_t RandomOperand::getBufferSize() const {
 // Construct a RandomOperation from OperationSignature.
 RandomOperation::RandomOperation(const OperationSignature& operation)
     : opType(operation.opType), finalizer(operation.finalizer) {
-    NN_FUZZER_LOG << "Operation: " << toString(opType);
+    NN_FUZZER_LOG << "Operation: " << opType;
 
     // Determine the data type and rank of the operation and invoke the constructor.
     TestOperandType dataType = getRandomChoice(operation.supportedDataTypes);
@@ -187,6 +187,11 @@ bool RandomGraph::generateValue() {
         if (operand->type == RandomOperandType::INPUT) numInputs++;
     }
 
+    auto requiresBufferAllocation = [](std::shared_ptr<RandomOperand>& operand) -> bool {
+        return operand->type != RandomOperandType::INTERNAL &&
+               operand->type != RandomOperandType::NO_VALUE;
+    };
+
     for (auto& operand : mOperands) {
         // Turn INPUT into CONST with probability prob. Need to keep at least one INPUT.
         float prob = 0.5f;
@@ -194,8 +199,7 @@ bool RandomGraph::generateValue() {
             if (operand->type == RandomOperandType::INPUT) numInputs--;
             operand->type = RandomOperandType::CONST;
         }
-        if (operand->type != RandomOperandType::INTERNAL &&
-            operand->type != RandomOperandType::NO_VALUE) {
+        if (requiresBufferAllocation(operand)) {
             if (operand->buffer.empty()) operand->resizeBuffer<uint8_t>(operand->getBufferSize());
             // If operand is set by randomBuffer, copy the frozen values into buffer.
             if (!operand->randomBuffer.empty()) {
@@ -209,6 +213,20 @@ bool RandomGraph::generateValue() {
     }
 
     for (auto& operation : mOperations) {
+        for (auto operand : operation.inputs) {
+            if (requiresBufferAllocation(operand)) {
+                NN_FUZZER_CHECK(!operand->buffer.empty())
+                        << " input operand has no allocated buffer!";
+            }
+        }
+
+        for (auto& operand : operation.outputs) {
+            if (requiresBufferAllocation(operand)) {
+                NN_FUZZER_CHECK(!operand->buffer.empty())
+                        << " output operand has no allocated buffer!";
+            }
+        }
+
         if (operation.finalizer) operation.finalizer(&operation);
     }
     return true;
@@ -276,14 +294,14 @@ TestModel RandomGraph::createTestModel() {
 
     // Set model operations.
     for (auto& operation : mOperations) {
-        NN_FUZZER_LOG << "Operation: " << toString(operation.opType);
+        NN_FUZZER_LOG << "Operation: " << operation.opType;
         TestOperation testOperation = {.type = static_cast<TestOperationType>(operation.opType)};
         for (auto& op : operation.inputs) {
-            NN_FUZZER_LOG << toString(*op);
+            NN_FUZZER_LOG << *op;
             testOperation.inputs.push_back(op->opIndex);
         }
         for (auto& op : operation.outputs) {
-            NN_FUZZER_LOG << toString(*op);
+            NN_FUZZER_LOG << *op;
             testOperation.outputs.push_back(op->opIndex);
         }
         testModel.main.operations.push_back(std::move(testOperation));
