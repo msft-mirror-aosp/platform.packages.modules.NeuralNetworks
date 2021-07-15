@@ -16,12 +16,13 @@
 
 #include "TestMemory.h"
 
-#include "TestNeuralNetworksWrapper.h"
-
+#include <android-base/scopeguard.h>
 #include <gtest/gtest.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "TestNeuralNetworksWrapper.h"
 
 using WrapperCompilation = ::android::nn::test_wrapper::Compilation;
 using WrapperExecution = ::android::nn::test_wrapper::Execution;
@@ -90,6 +91,9 @@ TEST_F(MemoryTest, TestFd) {
     unlink(path);
 }
 
+// Hardware buffers are an Android concept, which aren't necessarily
+// available on other platforms such as ChromeOS, which also build NNAPI.
+#if defined(__ANDROID__)
 TEST_F(MemoryTest, TestAHardwareBuffer) {
     const uint32_t offsetForMatrix2 = 20;
     const uint32_t offsetForMatrix3 = 200;
@@ -103,6 +107,8 @@ TEST_F(MemoryTest, TestAHardwareBuffer) {
     };
     AHardwareBuffer* buffer = nullptr;
     ASSERT_EQ(AHardwareBuffer_allocate(&desc, &buffer), 0);
+    auto allocateGuard =
+            android::base::make_scope_guard([buffer]() { AHardwareBuffer_release(buffer); });
 
     void* bufferPtr = nullptr;
     ASSERT_EQ(AHardwareBuffer_lock(buffer, desc.usage, -1, NULL, &bufferPtr), 0);
@@ -143,8 +149,7 @@ TEST_F(MemoryTest, TestAHardwareBuffer) {
     ASSERT_EQ(execution2.setOutput(0, actual, sizeof(Matrix3x4)), WrapperResult::NO_ERROR);
     ASSERT_EQ(execution2.compute(), WrapperResult::NO_ERROR);
     ASSERT_EQ(CompareMatrices(expected3, actual), 0);
-
-    AHardwareBuffer_release(buffer);
-    buffer = nullptr;
 }
+#endif
+
 }  // end namespace
