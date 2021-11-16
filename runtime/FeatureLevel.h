@@ -23,7 +23,7 @@ namespace android {
 namespace nn {
 
 // The current feature level of the NNAPI Runtime
-constexpr FeatureLevelCode kCurrentNNAPIRuntimeFeatureLevel = ANEURALNETWORKS_FEATURE_LEVEL_5;
+constexpr FeatureLevelCode kCurrentNNAPIRuntimeFeatureLevel = ANEURALNETWORKS_FEATURE_LEVEL_6;
 
 }  // namespace nn
 }  // namespace android
