@@ -77,6 +77,18 @@ const int kOEMCodeBase = 10000;
         }                                             \
     } while (0)
 
+enum class HalVersion : int32_t {
+    UNKNOWN,
+    V1_0,
+    V1_1,
+    V1_2,
+    V1_3,
+    AIDL_UNSTABLE,
+    LATEST = V1_3,
+};
+
+std::ostream& operator<<(std::ostream& os, const HalVersion& halVersion);
+
 // Make a Duration from a duration in nanoseconds. If the value exceeds the max duration, return the
 // maximum expressible duration.
 Duration makeTimeoutDuration(uint64_t nanoseconds);
@@ -278,13 +290,13 @@ struct ApiVersion {
     int64_t featureLevel;
 };
 
-constexpr auto kHalVersionV1_0ToApi = ApiVersion{.canonical = Version::ANDROID_OC_MR1,
+constexpr auto kHalVersionV1_0ToApi = ApiVersion{.canonical = kVersionFeatureLevel1,
                                                  .featureLevel = ANEURALNETWORKS_FEATURE_LEVEL_1};
-constexpr auto kHalVersionV1_1ToApi = ApiVersion{.canonical = Version::ANDROID_P,
+constexpr auto kHalVersionV1_1ToApi = ApiVersion{.canonical = kVersionFeatureLevel2,
                                                  .featureLevel = ANEURALNETWORKS_FEATURE_LEVEL_2};
-constexpr auto kHalVersionV1_2ToApi = ApiVersion{.canonical = Version::ANDROID_Q,
+constexpr auto kHalVersionV1_2ToApi = ApiVersion{.canonical = kVersionFeatureLevel3,
                                                  .featureLevel = ANEURALNETWORKS_FEATURE_LEVEL_3};
-constexpr auto kHalVersionV1_3ToApi = ApiVersion{.canonical = Version::ANDROID_R,
+constexpr auto kHalVersionV1_3ToApi = ApiVersion{.canonical = kVersionFeatureLevel4,
                                                  .featureLevel = ANEURALNETWORKS_FEATURE_LEVEL_4};
 
 // Utility that measures time period, in nanoseconds, from creation
