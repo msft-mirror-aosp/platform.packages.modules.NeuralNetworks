@@ -96,22 +96,13 @@ cc_defaults {
 }
 
 // libneuralnetworks_common* provides common utilities for the NNAPI runtime, drivers, and tests to
-// use. Multiple variants of the common library are provided:
-// - libneuralnetworks_common_hidl: the common library without any AIDL dependencies, used by
-//   NNAPI HIDL drivers and tests.
-// - libneuralnetworks_common_aidl(_vx): explicitly versioned common libraries linking against the
-//   corresponding version of the NNAPI sAIDL library, used by NNAPI sAIDL drivers.
-//   We need a variant for every frozen AIDL version because it is not allowed for a build target
-//   to depend on multiple versions of the NNAPI sAIDL library.
-//   libneuralnetworks_common_aidl (without a version listed behind it) is the current version.
-// - libneuralnetworks_common: the common library that links against the latest stable version of
-//   the NNAPI sAIDL library, used by NNAPI runtime and tests.
-// - libneuralnetworks_common_experimental: the common library that links against the "current"
-//   version of the NNAPI sAIDL library with NN_EXPERIMENTAL_FEATURE flag turned on, used by NNAPI
-//   drivers and tests for experimental features.
+// use. Two variants of the common library are provided:
+// - libneuralnetworks_common: the common library, used by NNAPI runtime and tests.
+// - libneuralnetworks_common_experimental: the common library with NN_EXPERIMENTAL_FEATURE flag
+//   turned on, used by NNAPI drivers and tests for experimental features.
 //
-// In addition to the AIDL dependencies, all variants of the common library also link against all
-// versions (1.0-3) of the NNAPI HIDL library.
+// Both variants of the common library also link against all versions (1.0-3) of the NNAPI HIDL
+// library.
 //
 cc_defaults {
     name: "libneuralnetworks_common_defaults",
@@ -227,28 +218,9 @@ cc_defaults {
 }
 
 cc_library_static {
-    name: "libneuralnetworks_common_aidl_v1",
-    defaults: [
-        "libneuralnetworks_common_defaults",
-    ],
-    shared_libs: [
-        "android.hardware.neuralnetworks-V1-ndk",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_utils_hal_aidl_v1",
-    ],
-}
-
-cc_library_static {
     name: "libneuralnetworks_common",
     defaults: [
         "libneuralnetworks_common_defaults",
-    ],
-    shared_libs: [
-        "android.hardware.neuralnetworks-V2-ndk",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_utils_hal_aidl",
     ],
 }
 
@@ -256,6 +228,12 @@ cc_library_static {
     name: "libneuralnetworks_common_experimental",
     defaults: [
         "libneuralnetworks_common_defaults",
+    ],
+    exclude_static_libs: [
+        "neuralnetworks_types",
+    ],
+    static_libs: [
+        "neuralnetworks_types_experimental",
     ],
     cflags: [
         "-DNN_EXPERIMENTAL_FEATURE",
@@ -400,8 +378,8 @@ cc_defaults {
     },
 }
 
-cc_library_static {
-    name: "neuralnetworks_types",
+cc_defaults {
+    name: "neuralnetworks_types_defaults",
     defaults: ["neuralnetworks_utils_defaults"],
     srcs: [
         "SharedMemory.cpp",
@@ -421,12 +399,8 @@ cc_library_static {
     local_include_dirs: ["include/nnapi"],
     export_include_dirs: ["include"],
     shared_libs: [
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
         "libbase",
         "libcutils",
-        "libhidlbase",
-        "libhidlmemory",
         "libutils",
     ],
     export_shared_lib_headers: [
@@ -434,6 +408,17 @@ cc_library_static {
         "libcutils",
         "libutils",
     ],
+}
+
+cc_library_static {
+    name: "neuralnetworks_types",
+    defaults: ["neuralnetworks_types_defaults"],
+}
+
+cc_library_static {
+    name: "neuralnetworks_types_experimental",
+    defaults: ["neuralnetworks_types_defaults"],
+    cflags: ["-DNN_EXPERIMENTAL_FEATURE"],
 }
 
 cc_library_static {
