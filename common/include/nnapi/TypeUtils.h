@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H
 
 #include <android-base/expected.h>
 #include <android-base/logging.h>
@@ -32,14 +32,6 @@
 #include "nnapi/Types.h"
 
 namespace android::nn {
-
-// The latest version of the HAL allowed by the Experimental Feature Level flag.
-Version getLatestHalVersion();
-
-// The runtime supports functionality that is currently not part of any HAL specification (e.g.,
-// Control Flow operations with operands of unknown size; see http://b/132458982#comment63). Because
-// of this, the runtime version is always the latest available HAL version + 1.
-Version getCurrentRuntimeVersion();
 
 bool isExtension(OperandType type);
 bool isExtension(OperationType type);
@@ -164,6 +156,8 @@ bool operator==(const Operand& a, const Operand& b);
 bool operator!=(const Operand& a, const Operand& b);
 bool operator==(const Operation& a, const Operation& b);
 bool operator!=(const Operation& a, const Operation& b);
+bool operator==(const Version& a, const Version& b);
+bool operator!=(const Version& a, const Version& b);
 
 inline std::string toString(uint32_t obj) {
     return std::to_string(obj);
@@ -298,4 +292,4 @@ class NnRetCheckErrorStream {
 
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H
