@@ -17,8 +17,8 @@
 // utilities. LegacyHalUtils.h is a superset of these utilities that includes
 // HAL utilities.
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_LEGACY_UTILS_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_LEGACY_UTILS_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_LEGACY_UTILS_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_LEGACY_UTILS_H
 
 #include <android-base/logging.h>
 #include <nnapi/TypeUtils.h>
@@ -40,7 +40,7 @@ namespace nn {
 const int kNumberOfDataTypes = 16;
 
 // The number of operation types (OperationCode) defined in NeuralNetworksTypes.h.
-const int kNumberOfOperationTypes = 104;
+const int kNumberOfOperationTypes = 106;
 
 #ifdef NN_EXPERIMENTAL_FEATURE
 const int kNumberOfExperimentalOperationTypes = 1;
@@ -319,4 +319,4 @@ struct TimeNanoMeasurer {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_LEGACY_UTILS_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_LEGACY_UTILS_H
