@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H
 
 #include <android-base/expected.h>
 #include <android-base/logging.h>
@@ -128,6 +128,7 @@ std::ostream& operator<<(std::ostream& os, const TimePoint& timePoint);
 std::ostream& operator<<(std::ostream& os, const OptionalTimePoint& optionalTimePoint);
 std::ostream& operator<<(std::ostream& os, const Duration& timeoutDuration);
 std::ostream& operator<<(std::ostream& os, const OptionalDuration& optionalTimeoutDuration);
+std::ostream& operator<<(std::ostream& os, const Version::Level& versionLevel);
 std::ostream& operator<<(std::ostream& os, const Version& version);
 
 bool operator==(const Timing& a, const Timing& b);
@@ -292,4 +293,4 @@ class NnRetCheckErrorStream {
 
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPE_UTILS_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPE_UTILS_H

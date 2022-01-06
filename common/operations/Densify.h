@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_DENSIFY_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_DENSIFY_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_DENSIFY_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_DENSIFY_H
 
 #include <vector>
 
-#include "LegacyUtils.h"
-#include "OperationResolver.h"
 #include "OperationsUtils.h"
 
 namespace android {
+
+class IOperationExecutionContext;
+
 namespace nn {
 namespace densify_op {
 
@@ -96,4 +97,4 @@ bool execute(IOperationExecutionContext* context);
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_DENSIFY_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_DENSIFY_H

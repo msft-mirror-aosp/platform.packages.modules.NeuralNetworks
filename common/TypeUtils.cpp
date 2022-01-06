@@ -573,6 +573,10 @@ std::ostream& operator<<(std::ostream& os, const OperationType& operationType) {
             return os << "BATCH_MATMUL";
         case OperationType::PACK:
             return os << "PACK";
+        case OperationType::MIRROR_PAD:
+            return os << "MIRROR_PAD";
+        case OperationType::REVERSE:
+            return os << "REVERSE";
         case OperationType::OEM_OPERATION:
             return os << "OEM_OPERATION";
 #ifdef NN_EXPERIMENTAL_FEATURE
@@ -904,8 +908,8 @@ std::ostream& operator<<(std::ostream& os, const OptionalDuration& optionalTimeo
     return os << optionalTimeoutDuration.value();
 }
 
-static std::ostream& operator<<(std::ostream& os, const Version::Level& level) {
-    switch (level) {
+std::ostream& operator<<(std::ostream& os, const Version::Level& versionLevel) {
+    switch (versionLevel) {
         case Version::Level::FEATURE_LEVEL_1:
             return os << "FEATURE_LEVEL_1";
         case Version::Level::FEATURE_LEVEL_2:
@@ -918,12 +922,14 @@ static std::ostream& operator<<(std::ostream& os, const Version::Level& level) {
             return os << "FEATURE_LEVEL_5";
         case Version::Level::FEATURE_LEVEL_6:
             return os << "FEATURE_LEVEL_6";
+        case Version::Level::FEATURE_LEVEL_7:
+            return os << "FEATURE_LEVEL_7";
 #ifdef NN_EXPERIMENTAL_FEATURE
         case Version::Level::FEATURE_LEVEL_EXPERIMENTAL:
             return os << "FEATURE_LEVEL_EXPERIMENTAL";
 #endif  // NN_EXPERIMENTAL_FEATURE
     }
-    return os << "Version{" << static_cast<uint32_t>(underlyingType(level)) << "}";
+    return os << "Version{" << static_cast<uint32_t>(underlyingType(versionLevel)) << "}";
 }
 
 std::ostream& operator<<(std::ostream& os, const Version& version) {

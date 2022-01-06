@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPES_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPES_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPES_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPES_H
 
 #include <android-base/chrono_utils.h>
 #include <android-base/expected.h>
@@ -1001,6 +1001,7 @@ struct Version {
         FEATURE_LEVEL_4,
         FEATURE_LEVEL_5,
         FEATURE_LEVEL_6,
+        FEATURE_LEVEL_7,
 #ifdef NN_EXPERIMENTAL_FEATURE
         FEATURE_LEVEL_EXPERIMENTAL,
 #endif  // NN_EXPERIMENTAL_FEATURE
@@ -1016,6 +1017,7 @@ constexpr auto kVersionFeatureLevel3 = Version{.level = Version::Level::FEATURE_
 constexpr auto kVersionFeatureLevel4 = Version{.level = Version::Level::FEATURE_LEVEL_4};
 constexpr auto kVersionFeatureLevel5 = Version{.level = Version::Level::FEATURE_LEVEL_5};
 constexpr auto kVersionFeatureLevel6 = Version{.level = Version::Level::FEATURE_LEVEL_6};
+constexpr auto kVersionFeatureLevel7 = Version{.level = Version::Level::FEATURE_LEVEL_7};
 #ifdef NN_EXPERIMENTAL_FEATURE
 constexpr auto kVersionFeatureLevelExperimental =
         Version{.level = Version::Level::FEATURE_LEVEL_EXPERIMENTAL};
@@ -1038,4 +1040,4 @@ struct MemoryPreference {
 
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_TYPES_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_TYPES_H
