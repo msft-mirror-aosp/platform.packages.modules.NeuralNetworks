@@ -606,9 +606,8 @@ std::ostream& operator<<(std::ostream& os, const Model::OperandValues& operandVa
     return os << "Model::OperandValues{<" << operandValues.size() << "bytes>}";
 }
 
-std::ostream& operator<<(std::ostream& os,
-                         const Model::ExtensionNameAndPrefix& extensionNameAndPrefix) {
-    return os << "Model::ExtensionNameAndPrefix{.name=" << extensionNameAndPrefix.name
+std::ostream& operator<<(std::ostream& os, const ExtensionNameAndPrefix& extensionNameAndPrefix) {
+    return os << "ExtensionNameAndPrefix{.name=" << extensionNameAndPrefix.name
               << ", .prefix=" << extensionNameAndPrefix.prefix << "}";
 }
 
@@ -711,6 +710,8 @@ std::ostream& operator<<(std::ostream& os, const Version::Level& versionLevel) {
             return os << "FEATURE_LEVEL_6";
         case Version::Level::FEATURE_LEVEL_7:
             return os << "FEATURE_LEVEL_7";
+        case Version::Level::FEATURE_LEVEL_8:
+            return os << "FEATURE_LEVEL_8";
 #ifdef NN_EXPERIMENTAL_FEATURE
         case Version::Level::FEATURE_LEVEL_EXPERIMENTAL:
             return os << "FEATURE_LEVEL_EXPERIMENTAL";

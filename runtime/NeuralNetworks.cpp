@@ -635,6 +635,8 @@ static_assert(ANEURALNETWORKS_FEATURE_LEVEL_6 == 1000006,
               "ANEURALNETWORKS_FEATURE_LEVEL_6 has changed");
 static_assert(ANEURALNETWORKS_FEATURE_LEVEL_7 == 1000007,
               "ANEURALNETWORKS_FEATURE_LEVEL_7 has changed");
+static_assert(ANEURALNETWORKS_FEATURE_LEVEL_8 == 1000008,
+              "ANEURALNETWORKS_FEATURE_LEVEL_8 has changed");
 
 #ifdef NN_COMPATIBILITY_LIBRARY_BUILD
 
@@ -1529,6 +1531,32 @@ int ANeuralNetworksModel_setOperandExtensionData(ANeuralNetworksModel* model, in
     }
     ModelBuilder* m = reinterpret_cast<ModelBuilder*>(model);
     return m->setOperandExtensionData(index, data, length);
+}
+
+int ANeuralNetworksCompilation_addExtensionAttribute(ANeuralNetworksCompilation* compilation,
+                                                     const char* extensionName,
+                                                     uint16_t attributeCodeWithinExtension,
+                                                     const void* data, size_t length) {
+    NNTRACE_RT(NNTRACE_PHASE_COMPILATION, "ANeuralNetworksCompilation_addExtensionAttribute");
+    if (!compilation || !extensionName || (!data && length != 0)) {
+        LOG(ERROR) << "ANeuralNetworksCompilation_addExtensionAttribute passed a nullptr";
+        return ANEURALNETWORKS_UNEXPECTED_NULL;
+    }
+    CompilationBuilder* c = reinterpret_cast<CompilationBuilder*>(compilation);
+    return c->addExtensionAttribute(extensionName, attributeCodeWithinExtension, data, length);
+}
+
+int ANeuralNetworksExecution_addExtensionAttribute(ANeuralNetworksExecution* execution,
+                                                   const char* extensionName,
+                                                   uint16_t attributeCodeWithinExtension,
+                                                   const void* data, size_t length) {
+    NNTRACE_RT(NNTRACE_PHASE_EXECUTION, "ANeuralNetworksExecution_addExtensionAttribute");
+    if (!execution || !extensionName || (!data && length != 0)) {
+        LOG(ERROR) << "ANeuralNetworksExecution_addExtensionAttribute passed a nullptr";
+        return ANEURALNETWORKS_UNEXPECTED_NULL;
+    }
+    ExecutionBuilder* r = reinterpret_cast<ExecutionBuilder*>(execution);
+    return r->addExtensionAttribute(extensionName, attributeCodeWithinExtension, data, length);
 }
 
 int ANeuralNetworksEvent_createFromSyncFenceFd(int syncFenceFd, ANeuralNetworksEvent** event) {
