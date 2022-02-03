@@ -51,6 +51,7 @@ cc_defaults {
         "operations/LogSoftmax.cpp",
         "operations/LogicalAndOr.cpp",
         "operations/LogicalNot.cpp",
+        "operations/MirrorPad.cpp",
         "operations/Neg.cpp",
         "operations/PRelu.cpp",
         "operations/Pack.cpp",
@@ -60,6 +61,7 @@ cc_defaults {
         "operations/Rank.cpp",
         "operations/Reduce.cpp",
         "operations/ResizeImageOps.cpp",
+        "operations/Reverse.cpp",
         "operations/RoiAlign.cpp",
         "operations/RoiPooling.cpp",
         "operations/Select.cpp",
@@ -105,7 +107,7 @@ cc_library_static {
         "tensorflow_headers",
     ],
     shared_libs: [
-        "android.hardware.neuralnetworks-V2-ndk",
+        "android.hardware.neuralnetworks-V3-ndk",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -200,7 +202,7 @@ cc_library_static {
         "operations/Tile.cpp",
     ],
     shared_libs: [
-        "android.hardware.neuralnetworks-V2-ndk",
+        "android.hardware.neuralnetworks-V3-ndk",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -487,7 +489,7 @@ cc_defaults {
         "libutils",
     ],
     static_libs: [
-        "android.hardware.neuralnetworks-V2-ndk",
+        "android.hardware.neuralnetworks-V3-ndk",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
