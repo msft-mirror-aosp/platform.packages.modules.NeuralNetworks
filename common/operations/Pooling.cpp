@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "Pooling.h"
-
 #include <vector>
 
 #include "OperationResolver.h"
@@ -25,13 +23,8 @@
 #include "nnapi/Validation.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/pooling.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -40,6 +33,11 @@ namespace android {
 namespace nn {
 
 namespace pooling {
+
+constexpr uint32_t kInputTensor = 0;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
@@ -293,10 +291,76 @@ bool maxPool(const T* inputData, const Shape& inputShape, const PoolingParam& pa
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(OperationType opType, const IOperationValidationContext* context) {
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+    auto inputCount = context->getNumInputs();
+    NN_RET_CHECK(inputCount == 11 || inputCount == 10 || inputCount == 8 || inputCount == 7);
+    auto inputType = context->getInputType(kInputTensor);
+    std::vector<OperandType> inExpectedTypes;
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_FLOAT32) {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+        inExpectedTypes = {
+                inputType,          OperandType::INT32, OperandType::INT32, OperandType::INT32,
+                OperandType::INT32, OperandType::INT32, OperandType::INT32,
+        };
+    } else if (inputType == OperandType::TENSOR_FLOAT16) {
+        minSupportedVersion = Version::ANDROID_Q;
+        inExpectedTypes = {
+                OperandType::TENSOR_FLOAT16, OperandType::INT32, OperandType::INT32,
+                OperandType::INT32,          OperandType::INT32, OperandType::INT32,
+                OperandType::INT32,
+        };
+    } else if (opType != OperationType::L2_POOL_2D &&
+               inputType == OperandType::TENSOR_QUANT8_ASYMM) {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+        inExpectedTypes = {
+                OperandType::TENSOR_QUANT8_ASYMM,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+        };
+    } else if (opType != OperationType::L2_POOL_2D &&
+               inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+        inExpectedTypes = {
+                OperandType::TENSOR_QUANT8_ASYMM_SIGNED,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+                OperandType::INT32,
+        };
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported input tensor type for operation " << opType;
+    }
+
+    if (inputCount >= 10) {
+        std::vector<OperandType> explicitScalarTypes(3, OperandType::INT32);
+        inExpectedTypes.insert(inExpectedTypes.end(), explicitScalarTypes.begin(),
+                               explicitScalarTypes.end());
+    }
+    if (inputCount == 11 || inputCount == 8) {
+        inExpectedTypes.push_back(OperandType::BOOL);
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+    } else {
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_OC_MR1);
+    }
+    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4);
 
     PoolingParam param;
     NN_RET_CHECK(param.initialize(context));
@@ -306,9 +370,9 @@ bool prepare(IOperationExecutionContext* context) {
     uint32_t height = getSizeOfDimension(input, param.useNchw ? 2 : 1);
     uint32_t width = getSizeOfDimension(input, param.useNchw ? 3 : 2);
     uint32_t channels = getSizeOfDimension(input, param.useNchw ? 1 : 3);
-    NN_RET_CHECK_GT(height, 0u);
-    NN_RET_CHECK_GT(width, 0u);
-    NN_RET_CHECK_GT(channels, 0u);
+    NN_RET_CHECK_GT(height, 0);
+    NN_RET_CHECK_GT(width, 0);
+    NN_RET_CHECK_GT(channels, 0);
 
     uint32_t outWidth = computeOutSize(width, param.filter_width, param.stride_width,
                                        param.padding_left, param.padding_right);
