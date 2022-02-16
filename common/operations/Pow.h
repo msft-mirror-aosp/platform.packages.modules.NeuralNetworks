@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_POW_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_POW_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_POW_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_POW_H
 
-#include "OperationsUtils.h"
+#include "CpuOperationUtils.h"
 
 namespace android {
 namespace nn {
 namespace pow {
-
-Result<Version> validate(const IOperationValidationContext* context);
 
 bool prepare(const Shape& in1, const Shape& in2, Shape* output);
 
@@ -34,4 +32,4 @@ bool eval(const void* baseData, const Shape& baseShape, const void* exponentData
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_POW_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_POW_H

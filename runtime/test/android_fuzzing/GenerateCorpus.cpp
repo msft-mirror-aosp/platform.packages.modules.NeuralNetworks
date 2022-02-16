@@ -31,6 +31,7 @@ namespace android::nn::fuzz {
 namespace {
 
 using namespace test_helper;
+using namespace android_nn_fuzz;
 
 OperandType convert(TestOperandType type) {
     return static_cast<OperandType>(type);
@@ -40,8 +41,8 @@ OperationType convert(TestOperationType type) {
     return static_cast<OperationType>(type);
 }
 
-OperandLifeTime convert(TestOperandLifeTime lifetime) {
-    return static_cast<OperandLifeTime>(lifetime);
+Operand::LifeTime convert(TestOperandLifeTime lifetime) {
+    return static_cast<Operand::LifeTime>(lifetime);
 }
 
 Scales convert(const std::vector<float>& scales) {
@@ -77,16 +78,8 @@ uint32_t getHashValue(const TestBuffer& buffer) {
 
 Buffer convert(bool noValue, const TestBuffer& buffer) {
     Buffer protoBuffer;
-    if (noValue) {
-        const EmptyBuffer empty{};
-        *protoBuffer.mutable_empty() = empty;
-    } else if (buffer.size() == sizeof(uint32_t)) {
-        const uint32_t scalar = *buffer.get<uint32_t>();
-        protoBuffer.set_scalar(scalar);
-    } else {
-        const uint32_t randomSeed = getHashValue(buffer);
-        protoBuffer.set_random_seed(randomSeed);
-    }
+    const uint32_t randomSeed = (noValue ? 0 : getHashValue(buffer));
+    protoBuffer.set_random_seed(randomSeed);
     return protoBuffer;
 }
 
@@ -135,27 +128,12 @@ Operations convert(const std::vector<TestOperation>& operations) {
     return protoOperations;
 }
 
-Subgraph convert(const TestSubgraph& subgraph) {
-    Subgraph protoSubgraph;
-    *protoSubgraph.mutable_operands() = convert(subgraph.operands);
-    *protoSubgraph.mutable_operations() = convert(subgraph.operations);
-    *protoSubgraph.mutable_input_indexes() = convertIndexes(subgraph.inputIndexes);
-    *protoSubgraph.mutable_output_indexes() = convertIndexes(subgraph.outputIndexes);
-    return protoSubgraph;
-}
-
-Subgraphs convert(const std::vector<TestSubgraph>& subgraphs) {
-    Subgraphs protoSubgraphs;
-    for (const auto& subgraph : subgraphs) {
-        *protoSubgraphs.add_subgraph() = convert(subgraph);
-    }
-    return protoSubgraphs;
-}
-
 Model convert(const TestModel& model) {
     Model protoModel;
-    *protoModel.mutable_main() = convert(model.main);
-    *protoModel.mutable_referenced() = convert(model.referenced);
+    *protoModel.mutable_operands() = convert(model.operands);
+    *protoModel.mutable_operations() = convert(model.operations);
+    *protoModel.mutable_input_indexes() = convertIndexes(model.inputIndexes);
+    *protoModel.mutable_output_indexes() = convertIndexes(model.outputIndexes);
     protoModel.set_is_relaxed(model.isRelaxed);
     return protoModel;
 }

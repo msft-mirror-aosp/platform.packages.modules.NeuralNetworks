@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "UnidirectionalSequenceRNN.h"
-
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -30,6 +28,20 @@ namespace android {
 namespace nn {
 namespace unidirectional_sequence_rnn {
 
+constexpr uint32_t kNumInputs = 7;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kWeightsTensor = 1;
+constexpr uint32_t kRecurrentWeightsTensor = 2;
+constexpr uint32_t kBiasTensor = 3;
+constexpr uint32_t kHiddenStateTensor = 4;
+constexpr uint32_t kActivationParam = 5;
+constexpr uint32_t kTimeMajorParam = 6;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kNumOutputsWithState = 2;
+constexpr uint32_t kOutputTensor = 0;
+constexpr uint32_t kStateOutputTensor = 1;
+
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
@@ -38,9 +50,9 @@ void transposeFirstTwoDims(const T* input, const Shape& inputShape, T* output) {
     const uint32_t firstDimSize = getSizeOfDimension(inputShape, 0);
     const uint32_t secondDimSize = getSizeOfDimension(inputShape, 1);
     const uint32_t inputSize = getSizeOfDimension(inputShape, 2);
-    for (uint32_t f = 0; f < firstDimSize; ++f) {
-        for (uint32_t s = 0; s < secondDimSize; ++s) {
-            for (uint32_t i = 0; i < inputSize; ++i) {
+    for (int f = 0; f < firstDimSize; ++f) {
+        for (int s = 0; s < secondDimSize; ++s) {
+            for (int i = 0; i < inputSize; ++i) {
                 const uint32_t inputIndex = f * secondDimSize * inputSize + s * inputSize + i;
                 const uint32_t outputIndex = s * firstDimSize * inputSize + f * inputSize + i;
                 output[outputIndex] = input[inputIndex];
@@ -92,7 +104,7 @@ bool executeTyped(IOperationExecutionContext* context) {
     fixedTimeInputShape.dimensions[0] = inputShape.dimensions[1];
     fixedTimeInputShape.dimensions[1] = inputShape.dimensions[2];
 
-    for (uint32_t i = 0; i < maxTime; ++i) {
+    for (int i = 0; i < maxTime; ++i) {
         RNN::RNNStep<T>(input, fixedTimeInputShape, hiddenState, bias, weights, weightsShape,
                         recurrentWeights, recurrentWeightsShape, activation, output);
         input += batchSize * inputSize;
@@ -114,7 +126,30 @@ bool executeTyped(IOperationExecutionContext* context) {
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
+    const int numOutputs = context->getNumOutputs();
+    NN_RET_CHECK(numOutputs == kNumOutputs || numOutputs == kNumOutputsWithState);
+    OperandType inputType = context->getInputType(kInputTensor);
+    if (inputType != OperandType::TENSOR_FLOAT16 && inputType != OperandType::TENSOR_FLOAT32) {
+        return NN_ERROR() << "Unsupported input operand type for UNIDIRECTIONAL_SEQUENCE_RNN op: "
+                          << inputType;
+    }
+    NN_RET_CHECK(validateInputTypes(context, {inputType, inputType, inputType, inputType, inputType,
+                                              OperandType::INT32, OperandType::INT32}));
+    std::vector<OperandType> outputTypes = {inputType};
+    Version minVersionSupported = Version::ANDROID_Q;
+    if (numOutputs == kNumOutputsWithState) {
+        minVersionSupported = Version::ANDROID_R;
+        outputTypes.push_back(inputType);
+    }
+    NN_RET_CHECK(validateOutputTypes(context, outputTypes));
+    return minVersionSupported;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     Shape weights = context->getInputShape(kWeightsTensor);
@@ -131,11 +166,11 @@ bool prepare(IOperationExecutionContext* context) {
     const uint32_t numUnits = getSizeOfDimension(weights, 0);
     const uint32_t inputSize = getSizeOfDimension(input, 2);
 
-    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 3u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(weights), 2u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(recurrentWeights), 2u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(bias), 1u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(hiddenState), 2u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 3);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(weights), 2);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(recurrentWeights), 2);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(bias), 1);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(hiddenState), 2);
 
     NN_RET_CHECK_EQ(inputSize, getSizeOfDimension(weights, 1));
     NN_RET_CHECK_EQ(numUnits, getSizeOfDimension(bias, 0));
