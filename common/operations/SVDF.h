@@ -14,28 +14,23 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_SVDF_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_SVDF_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_SVDF_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_SVDF_H
+
+#include <tensorflow/lite/kernels/internal/tensor_utils.h>
 
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
-#include "ActivationFunctor.h"
-#include "OperationsUtils.h"
 #include "nnapi/Types.h"
 
 namespace android {
 namespace nn {
-namespace svdf {
-
-Result<Version> validate(const IOperationValidationContext* context);
-
-}  // namespace svdf
 
 struct SVDFParams {
     int rank_;
-    ActivationFn activation_;
+    TfLiteFusedActivation activation_;
 };
 
 struct RunTimeOperandInfo;
@@ -80,4 +75,4 @@ class SVDF {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_SVDF_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_SVDF_H
