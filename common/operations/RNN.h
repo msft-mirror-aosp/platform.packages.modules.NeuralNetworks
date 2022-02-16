@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_RNN_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_RNN_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_RNN_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_RNN_H
 
 #include <vector>
 
 #include "ActivationFunctor.h"
-#include "OperationsUtils.h"
 #include "nnapi/Types.h"
 
 namespace android {
 namespace nn {
-namespace rnn {
-
-Result<Version> validate(const IOperationValidationContext* context);
-
-}  // namespace rnn
 
 struct RunTimeOperandInfo;
 struct Shape;
@@ -83,4 +77,4 @@ class RNN {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_RNN_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_RNN_H

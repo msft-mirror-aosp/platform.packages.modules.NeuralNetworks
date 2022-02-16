@@ -2,57 +2,57 @@
 // DO NOT EDIT
 // clang-format off
 #include "TestHarness.h"
-using namespace test_helper;  // NOLINT(google-build-using-namespace)
+using namespace test_helper;
 
 namespace generated_tests::logical_and {
 
 const TestModel& get_test_model_simple() {
     static TestModel model = {
+        .expectFailure = false,
+        .expectedMultinomialDistributionTolerance = 0,
+        .isRelaxed = false,
         .main = {
+                .inputIndexes = {0, 1},
                 .operands = {{ // input0
-                            .type = TestOperandType::TENSOR_BOOL8,
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true}),
                             .dimensions = {1, 1, 1, 4},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
                             .numberOfConsumers = 1,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true})
+                            .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
                         }, { // input1
-                            .type = TestOperandType::TENSOR_BOOL8,
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true, false, true, false}),
                             .dimensions = {1, 1, 1, 4},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
                             .numberOfConsumers = 1,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true, false, true, false})
-                        }, { // output0
                             .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
+                        }, { // output0
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true, false, false, false}),
                             .dimensions = {1, 1, 1, 4},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_OUTPUT,
                             .numberOfConsumers = 0,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_OUTPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true, false, false, false})
+                            .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
                         }},
                 .operations = {{
-                            .type = TestOperationType::LOGICAL_AND,
                             .inputs = {0, 1},
-                            .outputs = {2}
+                            .outputs = {2},
+                            .type = TestOperationType::LOGICAL_AND
                         }},
-                .inputIndexes = {0, 1},
                 .outputIndexes = {2}
             },
-        .referenced = {},
-        .isRelaxed = false,
-        .expectedMultinomialDistributionTolerance = 0,
-        .expectFailure = false,
-        .minSupportedVersion = TestHalVersion::V1_2
+        .minSupportedVersion = TestHalVersion::V1_2,
+        .referenced = {}
     };
     return model;
 }
@@ -65,51 +65,51 @@ namespace generated_tests::logical_and {
 
 const TestModel& get_test_model_broadcast() {
     static TestModel model = {
+        .expectFailure = false,
+        .expectedMultinomialDistributionTolerance = 0,
+        .isRelaxed = false,
         .main = {
+                .inputIndexes = {0, 1},
                 .operands = {{ // input01
-                            .type = TestOperandType::TENSOR_BOOL8,
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true}),
                             .dimensions = {1, 1, 1, 4},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
                             .numberOfConsumers = 1,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true})
+                            .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
                         }, { // input11
-                            .type = TestOperandType::TENSOR_BOOL8,
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true}),
                             .dimensions = {1, 1},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
                             .numberOfConsumers = 1,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_INPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true})
-                        }, { // output01
                             .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
+                        }, { // output01
+                            .channelQuant = {},
+                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true}),
                             .dimensions = {1, 1, 1, 4},
+                            .isIgnored = false,
+                            .lifetime = TestOperandLifeTime::SUBGRAPH_OUTPUT,
                             .numberOfConsumers = 0,
                             .scale = 0.0f,
-                            .zeroPoint = 0,
-                            .lifetime = TestOperandLifeTime::SUBGRAPH_OUTPUT,
-                            .channelQuant = {},
-                            .isIgnored = false,
-                            .data = TestBuffer::createFromVector<bool8>({true, false, false, true})
+                            .type = TestOperandType::TENSOR_BOOL8,
+                            .zeroPoint = 0
                         }},
                 .operations = {{
-                            .type = TestOperationType::LOGICAL_AND,
                             .inputs = {0, 1},
-                            .outputs = {2}
+                            .outputs = {2},
+                            .type = TestOperationType::LOGICAL_AND
                         }},
-                .inputIndexes = {0, 1},
                 .outputIndexes = {2}
             },
-        .referenced = {},
-        .isRelaxed = false,
-        .expectedMultinomialDistributionTolerance = 0,
-        .expectFailure = false,
-        .minSupportedVersion = TestHalVersion::V1_2
+        .minSupportedVersion = TestHalVersion::V1_2,
+        .referenced = {}
     };
     return model;
 }

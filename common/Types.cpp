@@ -33,7 +33,6 @@
 #include "OperationTypes.h"
 #include "Result.h"
 #include "TypeUtils.h"
-#include "Validation.h"
 
 namespace android::nn {
 
@@ -42,16 +41,6 @@ namespace android::nn {
 // `getAlignmentForLength`. However, this value will have to be changed if `getAlignmentForLength`
 // returns a larger alignment.
 static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= 4, "`New` alignment is not sufficient");
-
-GeneralError::GeneralError(std::string message, ErrorStatus code)
-    : message(std::move(message)), code(code) {}
-
-ExecutionError::ExecutionError(std::string message, ErrorStatus code,
-                               std::vector<OutputShape> outputShapes)
-    : message(std::move(message)), code(code), outputShapes(std::move(outputShapes)) {}
-
-ExecutionError::ExecutionError(GeneralError error)
-    : message(std::move(error.message)), code(error.code) {}
 
 Model::OperandValues::OperandValues() {
     constexpr size_t kNumberBytes = 4 * 1024;
@@ -123,12 +112,18 @@ SyncFence SyncFence::createAsSignaled() {
 }
 
 SyncFence SyncFence::create(base::unique_fd fd) {
-    CHECK(fd.ok());
-    return SyncFence(std::make_shared<const Handle>(std::move(fd)));
+    std::vector<base::unique_fd> fds;
+    fds.push_back(std::move(fd));
+    return SyncFence(std::make_shared<const Handle>(Handle{
+            .fds = std::move(fds),
+            .ints = {},
+    }));
 }
 
 Result<SyncFence> SyncFence::create(SharedHandle syncFence) {
-    if (!validate(syncFence).ok()) {
+    const bool isValid =
+            (syncFence != nullptr && syncFence->fds.size() == 1 && syncFence->ints.empty());
+    if (!isValid) {
         return NN_ERROR() << "Invalid sync fence handle passed to SyncFence::create";
     }
     return SyncFence(std::move(syncFence));
@@ -141,7 +136,7 @@ SyncFence::FenceState SyncFence::syncWait(OptionalTimeout optionalTimeout) const
         return FenceState::SIGNALED;
     }
 
-    const int fd = mSyncFence->get();
+    const int fd = mSyncFence->fds.front().get();
     const int timeout = optionalTimeout.value_or(Timeout{-1}).count();
 
     // This implementation is directly based on the ::sync_wait() implementation.
@@ -187,7 +182,7 @@ bool SyncFence::hasFd() const {
 }
 
 int SyncFence::getFd() const {
-    return mSyncFence == nullptr ? -1 : mSyncFence->get();
+    return mSyncFence == nullptr ? -1 : mSyncFence->fds.front().get();
 }
 
 }  // namespace android::nn

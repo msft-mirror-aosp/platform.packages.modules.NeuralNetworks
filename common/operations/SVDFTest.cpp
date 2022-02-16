@@ -263,7 +263,7 @@ class SVDFOpModel {
 
         ASSERT_EQ(execution.setInput(SVDF::kRankParam, &rank_, sizeof(rank_)), Result::NO_ERROR);
 
-        int activation = ActivationFn::kActivationNone;
+        int activation = TfLiteFusedActivation::kTfLiteActNone;
         ASSERT_EQ(execution.setInput(SVDF::kActivationParam, &activation, sizeof(activation)),
                   Result::NO_ERROR);
 
