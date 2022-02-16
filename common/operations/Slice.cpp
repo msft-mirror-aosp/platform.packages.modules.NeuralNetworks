@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "Slice.h"
-
 #include <vector>
 
 #include "IndexedShapeWrapper.h"
@@ -31,28 +29,38 @@ namespace android {
 namespace nn {
 namespace slice {
 
+constexpr char kOperationName[] = "SLICE";
+
+constexpr uint32_t kNumInputs = 3;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kBeginTensor = 1;
+constexpr uint32_t kSizeTensor = 2;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
+
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 template <typename T>
 void addVectors(const std::vector<T>& a, const std::vector<T>& b, std::vector<T>* res) {
-    for (size_t i = 0; i < res->size(); ++i) {
+    for (int i = 0; i < res->size(); ++i) {
         res->at(i) = a[i] + b[i];
     }
 }
 
 template <typename T>
 bool evalGeneric(const T* inputData, const Shape& inputShape, const int32_t* beginData,
-                 const Shape& beginShape, const int32_t* /*sizeData*/, const Shape& /*sizeShape*/,
+                 const Shape& beginShape, const int32_t* sizeData, const Shape& sizeShape,
                  T* outputData, const Shape& outputShape) {
-    [[maybe_unused]] const int outputSize = getNumberOfElements(outputShape);
+    const int outputSize = getNumberOfElements(outputShape);
     const IndexedShapeWrapper indexedOutput = IndexedShapeWrapper(outputShape);
     const IndexedShapeWrapper indexedInput = IndexedShapeWrapper(inputShape);
     std::vector<uint32_t> outputIndex(getNumberOfDimensions(outputShape), 0);
     std::vector<uint32_t> beginIndex(getSizeOfDimension(beginShape, 0));
     std::vector<uint32_t> inputIndex(getNumberOfDimensions(inputShape));
 
-    for (size_t i = 0; i < beginIndex.size(); ++i) {
+    for (int i = 0; i < beginIndex.size(); ++i) {
         beginIndex[i] = static_cast<uint32_t>(beginData[i]);
     }
 
@@ -73,18 +81,43 @@ bool evalGeneric(const T* inputData, const Shape& inputShape, const int32_t* beg
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+
+    const OperandType inputType = context->getInputType(kInputTensor);
+    NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
+                 inputType == OperandType::TENSOR_FLOAT32 ||
+                 inputType == OperandType::TENSOR_INT32 ||
+                 inputType == OperandType::TENSOR_QUANT8_ASYMM ||
+                 inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
+            << "Unsupported tensor type for operation " << kOperationName;
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+    } else {
+        minSupportedVersion = Version::ANDROID_Q;
+    }
+    NN_RET_CHECK(validateInputTypes(
+            context, {inputType, OperandType::TENSOR_INT32, OperandType::TENSOR_INT32}));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     const Shape& inputShape = context->getInputShape(kInputTensor);
-    const uint32_t n_dims = getNumberOfDimensions(inputShape);
+    const int32_t n_dims = getNumberOfDimensions(inputShape);
     NN_RET_CHECK(n_dims > 0);
 
     const Shape& beginShape = context->getInputShape(kBeginTensor);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(beginShape), 1u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(beginShape), 1);
     NN_RET_CHECK_EQ(getSizeOfDimension(beginShape, 0), n_dims);
 
     const Shape& sizeShape = context->getInputShape(kSizeTensor);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(sizeShape), 1u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(sizeShape), 1);
     NN_RET_CHECK_EQ(getSizeOfDimension(sizeShape, 0), n_dims);
 
     const int32_t* beginData = context->getInputBuffer<int32_t>(kBeginTensor);
@@ -92,16 +125,15 @@ bool prepare(IOperationExecutionContext* context) {
 
     Shape outputShape = context->getOutputShape(kOutputTensor);
     outputShape.dimensions.resize(n_dims);
-    for (uint32_t i = 0; i < n_dims; ++i) {
+    for (int i = 0; i < n_dims; ++i) {
         const int32_t sliceBegin = beginData[i];
         int32_t sliceSize = sizeData[i];
         if (sliceSize == -1) {
             sliceSize = getSizeOfDimension(inputShape, i) - sliceBegin;
         }
-        NN_RET_CHECK_LE(static_cast<uint32_t>(beginData[i]), getSizeOfDimension(inputShape, i));
+        NN_RET_CHECK_LE(beginData[i], getSizeOfDimension(inputShape, i));
         NN_RET_CHECK_GE(sliceSize, 0);
-        NN_RET_CHECK_LE(static_cast<uint32_t>(sliceBegin + sliceSize),
-                        getSizeOfDimension(inputShape, i));
+        NN_RET_CHECK_LE(sliceBegin + sliceSize, getSizeOfDimension(inputShape, i));
         outputShape.dimensions[i] = sliceSize;
     }
     return context->setOutputShape(kOutputTensor, outputShape);

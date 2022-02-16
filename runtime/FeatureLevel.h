@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_FEATURE_LEVEL_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_FEATURE_LEVEL_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_FEATURE_LEVEL_H
+#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_FEATURE_LEVEL_H
 
 #include "NeuralNetworks.h"
 
 namespace android {
 namespace nn {
 
-// The current version of the NNAPI APEX module.
-// Keep this value in sync with packages/modules/NeuralNetworks/apex/manifest.json.
-constexpr int64_t kNnapiApexVersion = 319999900;
+// The current feature level of the NNAPI Runtime
+constexpr FeatureLevelCode kCurrentNNAPIRuntimeFeatureLevel = ANEURALNETWORKS_FEATURE_LEVEL_7;
 
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_FEATURE_LEVEL_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_RUNTIME_FEATURE_LEVEL_H

@@ -18,8 +18,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "Broadcast.h"
-
 #include <algorithm>
 #include <vector>
 
@@ -30,17 +28,12 @@
 #include "nnapi/Validation.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/integer_ops/add.h>
 #include <tensorflow/lite/kernels/internal/optimized/integer_ops/mul.h>
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/add.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/mul.h>
 #include <tensorflow/lite/kernels/internal/types.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -49,6 +42,14 @@ namespace android {
 namespace nn {
 
 namespace broadcast {
+
+constexpr uint32_t kNumInputs = 3;
+constexpr uint32_t kInputTensor1 = 0;
+constexpr uint32_t kInputTensor2 = 1;
+constexpr uint32_t kActivationScalar = 2;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
@@ -436,13 +437,57 @@ bool divFloat16(const _Float16* in1, const Shape& shape1, const _Float16* in2, c
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(OperationType opType, const IOperationValidationContext* context) {
+    auto minSupportedVersion = (opType == OperationType::DIV || opType == OperationType::SUB)
+                                       ? Version::ANDROID_P
+                                       : Version::ANDROID_OC_MR1;
+    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+    auto inputType = context->getInputType(kInputTensor1);
+    if (inputType == OperandType::TENSOR_FLOAT32) {
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_OC_MR1);
+    } else if (inputType == OperandType::TENSOR_FLOAT16) {
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM) {
+        if (opType == OperationType::SUB) {
+            minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        } else if (opType == OperationType::DIV) {
+            NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation DIV";
+        } else if (opType == OperationType::MUL) {
+            Shape output = context->getOutputShape(kOutputTensor);
+            Shape input1 = context->getInputShape(kInputTensor1);
+            Shape input2 = context->getInputShape(kInputTensor2);
+            NN_RET_CHECK_GT(output.scale, input1.scale * input2.scale);
+            minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_OC_MR1);
+        } else {
+            minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_OC_MR1);
+        }
+    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED ||
+               inputType == OperandType::TENSOR_INT32) {
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_R);
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << opType;
+    }
+    const Shape& input1 = context->getInputShape(kInputTensor1);
+    const Shape& input2 = context->getInputShape(kInputTensor2);
+    if (hasKnownRank(input1) && hasKnownRank(input2)) {
+        NN_RET_CHECK_LE(getNumberOfDimensions(input1), 4);
+        NN_RET_CHECK_LE(getNumberOfDimensions(input2), 4);
+    }
+    NN_RET_CHECK(validateInputTypes(context, {inputType, inputType, OperandType::INT32}));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input1 = context->getInputShape(kInputTensor1);
     Shape input2 = context->getInputShape(kInputTensor2);
     Shape output = context->getOutputShape(kOutputTensor);
-    NN_RET_CHECK_LE(getNumberOfDimensions(input1), 4u);
-    NN_RET_CHECK_LE(getNumberOfDimensions(input2), 4u);
+    NN_RET_CHECK_LE(getNumberOfDimensions(input1), 4);
+    NN_RET_CHECK_LE(getNumberOfDimensions(input2), 4);
     NN_RET_CHECK(calculateBroadcastedShape(input1, input2, &output));
     return context->setOutputShape(kOutputTensor, output);
 }
