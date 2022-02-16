@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_BUILDER_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_BUILDER_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_BUILDER_H
+#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_BUILDER_H
 
 #include <ControlFlow.h>
 #include <CpuExecutor.h>
@@ -26,7 +26,6 @@
 #include <nnapi/Validation.h>
 
 #include <memory>
-#include <set>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -52,9 +51,6 @@ class RuntimeMemory;
 class RuntimePreparedModel;
 class RuntimeExecution;
 class StepExecutor;
-
-// Execution modes
-enum class ExecutionMode { ASYNC, SYNC, BURST, ASYNC_WITH_DEPS };
 
 class ExecutionBuilder {
     friend class StepExecutor;
@@ -88,9 +84,6 @@ class ExecutionBuilder {
 
     int setReusable(bool reusable);
 
-    int addExtensionAttribute(const char* extensionName, uint16_t attributeCodeWithinExtension,
-                              const void* data, size_t length);
-
     int computeFenced(const std::vector<int>& wait_for, uint64_t timeoutDurationAfterFence,
                       int* sync_fence);
 
@@ -122,12 +115,9 @@ class ExecutionBuilder {
 
     // This method will be called at the end of all computation paths to change the state
     // of the execution object and update output shapes / memories.
-    int finishComputation(int result, const std::vector<OutputShape>& outputShapes,
-                          ExecutionMode mode);
-    ErrorStatus finishComputation(ErrorStatus error, const std::vector<OutputShape>& outputShapes,
-                                  ExecutionMode mode) {
-        const int result =
-                finishComputation(convertErrorStatusToResultCode(error), outputShapes, mode);
+    int finishComputation(int result, const std::vector<OutputShape>& outputShapes);
+    ErrorStatus finishComputation(ErrorStatus error, const std::vector<OutputShape>& outputShapes) {
+        const int result = finishComputation(convertErrorStatusToResultCode(error), outputShapes);
         return convertResultCodeToErrorStatus(result);
     }
 
@@ -139,13 +129,6 @@ class ExecutionBuilder {
         std::lock_guard<std::mutex> lock(mStateMutex);
         return mState == State::COMPUTATION;
     }
-    bool completed() const {
-        std::lock_guard<std::mutex> lock(mStateMutex);
-        return mState == State::COMPLETED;
-    }
-
-    // Retrieve a computation start point
-    TimePoint getComputeStartTimePoint() const;
 
     const ModelArgumentInfo& getInputInfo(uint32_t index) const { return mInputs[index]; }
     const ModelArgumentInfo& getOutputInfo(uint32_t index) const { return mOutputs[index]; }
@@ -153,8 +136,6 @@ class ExecutionBuilder {
     std::optional<RunTimePoolInfo> getRunTimePoolInfo(uint32_t poolIndex) const {
         return mMemories[poolIndex]->getRunTimePoolInfo();
     }
-
-    const std::vector<TokenValuePair>& getMetadata() const { return mMetadata; }
 
    protected:
     // If a callback is provided, then this is asynchronous. If a callback is
@@ -176,7 +157,7 @@ class ExecutionBuilder {
 
     // This method handles the common preparation and validation logic of compute and computeFenced.
     // It will be called at the start of every computation.
-    int prepareForCompute(const char* name, ExecutionMode mode);
+    int prepareForCompute(const char* name);
 
     const CompilationBuilder* mCompilation;
 
@@ -209,10 +190,6 @@ class ExecutionBuilder {
     // Do we ask the driver to measure timing?
     bool mMeasureTiming = false;
 
-    // Timepoint of computation start, used to evaluate timing
-    // from runtime perspective
-    TimePoint mComputeStartTimePoint;
-
     // Timing reported from the driver.  This field is only used if
     // mFencedExecutionCallback is nullptr.
     Timing mTimingWithoutFencedExecutionCallback = {};
@@ -232,6 +209,10 @@ class ExecutionBuilder {
     bool computationStarted() const {
         std::lock_guard<std::mutex> lock(mStateMutex);
         return mState != State::PREPARATION;
+    }
+    bool completed() const {
+        std::lock_guard<std::mutex> lock(mStateMutex);
+        return mState == State::COMPLETED;
     }
 
     // Mutex to guard mState. Note that this not strictly needed because we provide
@@ -277,9 +258,6 @@ class ExecutionBuilder {
 
     // Can compute APIs be invoked multiple times on the execution object?
     bool mReusable = false;
-
-    // Vendor specific metadata
-    std::vector<TokenValuePair> mMetadata;
 };
 
 // For execution plan with a SIMPLE body, i.e. the whole model will be executed on a single device.
@@ -479,4 +457,4 @@ std::string toString(StepExecutor::UpdateOutputShapes updateOutputShapes);
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_BUILDER_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_BUILDER_H

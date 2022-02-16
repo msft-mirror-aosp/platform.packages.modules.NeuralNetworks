@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "Softmax.h"
-
 #include <algorithm>
 #include <cfloat>
 #include <limits>
@@ -28,13 +26,8 @@
 #include "nnapi/Validation.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -44,11 +37,21 @@ namespace nn {
 
 namespace softmax {
 
+constexpr char kOperationName[] = "SOFTMAX";
+
+constexpr uint32_t kNumInputs = 3;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kBetaScalar = 1;
+constexpr uint32_t kAxisScalar = 2;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
+
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 inline bool softmaxSlowFloat32(const float* inputData, const Shape& inputShape, const float beta,
-                               int32_t axis, float* outputData, const Shape& /*outputShape*/) {
+                               int32_t axis, float* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("softmaxFloatSlow32");
     const uint32_t outerSize = getNumberOfElements(inputShape, 0, axis);
     const uint32_t axisSize = getSizeOfDimension(inputShape, axis);
@@ -110,9 +113,9 @@ bool softmaxFloat16(const _Float16* inputData, const Shape& inputShape, const fl
 }
 
 template <typename T>
-bool softmaxQuant8Impl(const T* inputData, const Shape& inputShape, const float /*beta*/,
-                       int32_t axis, int32_t inputMultiplier, int32_t inputLeftShift, float diffMin,
-                       T* outputData, const Shape& /*outputShape*/) {
+bool softmaxQuant8Impl(const T* inputData, const Shape& inputShape, const float beta, int32_t axis,
+                       int32_t inputMultiplier, int32_t inputLeftShift, float diffMin,
+                       T* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("softmaxQuant8");
     // The representation chosen for the input to the exp() function is Q5.26.
     // We need to leave extra space since values that we skip might be as large as
@@ -199,7 +202,7 @@ bool softmaxQuant8Impl(const T* inputData, const Shape& inputShape, const float 
 template <typename T>
 bool softmaxQuant8(const T* inputData, const Shape& inputShape, const float beta, int32_t axis,
                    T* outputData, const Shape& outputShape) {
-    [[maybe_unused]] int32_t ndim = getNumberOfDimensions(inputShape);
+    int32_t ndim = getNumberOfDimensions(inputShape);
     NN_CHECK(handleNegativeAxis(inputShape, &axis));
 
     if ((inputShape.type == OperandType::TENSOR_QUANT8_ASYMM && outputShape.offset != 0) ||
@@ -227,13 +230,51 @@ bool softmaxQuant8(const T* inputData, const Shape& inputShape, const float beta
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK(context->getNumInputs() == kNumInputs ||
+                 context->getNumInputs() == kNumInputs - 1);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+    auto inputType = context->getInputType(kInputTensor);
+    std::vector<OperandType> inExpectedTypes;
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_FLOAT32 || inputType == OperandType::TENSOR_QUANT8_ASYMM) {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+        inExpectedTypes = {inputType, OperandType::FLOAT32};
+    } else if (inputType == OperandType::TENSOR_FLOAT16) {
+        minSupportedVersion = Version::ANDROID_Q;
+        inExpectedTypes = {inputType, OperandType::FLOAT16};
+    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+        inExpectedTypes = {inputType, OperandType::FLOAT32};
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
+    }
+    const auto inputRank = getNumberOfDimensions(context->getInputShape(kInputTensor));
+    if (inputRank != 0) {
+        NN_RET_CHECK_LE(inputRank, 4);
+    }
+    if (context->getNumInputs() == kNumInputs) {
+        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        inExpectedTypes.push_back(OperandType::INT32);
+    } else {
+        if (inputRank != 2 && inputRank != 4 && inputRank != 0) {
+            minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        }
+    }
+    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     float beta = (input.type == OperandType::TENSOR_FLOAT16)
                          ? context->getInputValue<_Float16>(kBetaScalar)
                          : context->getInputValue<float>(kBetaScalar);
-    NN_RET_CHECK_LE(getNumberOfDimensions(input), 4u);
+    NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
     NN_RET_CHECK_GT(beta, 0.0f);
     Shape output = context->getOutputShape(kOutputTensor);
     output.dimensions = input.dimensions;

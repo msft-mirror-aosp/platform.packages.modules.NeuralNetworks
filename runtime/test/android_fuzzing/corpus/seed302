@@ -1,69 +1,75 @@
 model {
-  main {
-    operands {
-      operand {
-        type: TENSOR_INT32
-        dimensions {
-          dimension: 3
-        }
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 998198811
-        }
+  operands {
+    operand {
+      type: TENSOR_FLOAT16
+      dimensions {
+        dimension: 3
       }
-      operand {
-        type: TENSOR_INT32
-        dimensions {
-          dimension: 3
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
         }
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 1915153758
-        }
+        channel_dim: 0
       }
-      operand {
-        type: TENSOR_BOOL8
-        dimensions {
-          dimension: 3
-        }
-        lifetime: SUBGRAPH_OUTPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 4015881661
-        }
+      data {
+        random_seed: 3405605218
       }
     }
-    operations {
-      operation {
-        type: LESS
-        inputs {
-          index: 0
-          index: 1
+    operand {
+      type: TENSOR_FLOAT16
+      dimensions {
+        dimension: 3
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
         }
-        outputs {
-          index: 2
-        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 2473501535
       }
     }
-    input_indexes {
-      index: 0
-      index: 1
-    }
-    output_indexes {
-      index: 2
+    operand {
+      type: TENSOR_BOOL8
+      dimensions {
+        dimension: 3
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_OUTPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 4015881661
+      }
     }
   }
-  referenced {
+  operations {
+    operation {
+      type: LESS
+      inputs {
+        index: 0
+        index: 1
+      }
+      outputs {
+        index: 2
+      }
+    }
   }
+  input_indexes {
+    index: 0
+    index: 1
+  }
+  output_indexes {
+    index: 2
+  }
+  is_relaxed: false
 }
