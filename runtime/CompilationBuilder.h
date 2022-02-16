@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_COMPILATION_BUILDER_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_COMPILATION_BUILDER_H
-
-#include <nnapi/Types.h>
+#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_COMPILATION_BUILDER_H
+#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_COMPILATION_BUILDER_H
 
 #include <chrono>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "ExecutionPlan.h"
@@ -62,9 +58,6 @@ class CompilationBuilder {
 
     int setTimeoutDuration(uint64_t duration);
 
-    int addExtensionAttribute(const char* extensionName, uint16_t attributeCodeWithinExtension,
-                              const void* data, size_t length);
-
     int finish();
 
     int getPreferredMemoryAlignmentForInput(uint32_t index, uint32_t* alignment) const;
@@ -77,7 +70,6 @@ class CompilationBuilder {
     int createBurst(BurstBuilder** burst);
 
     const ModelBuilder* getModel() const { return mModel; }
-    const std::vector<std::shared_ptr<Device>>& getDevices() const { return mDevices; }
 
     int forEachStepRoleOfInput(uint32_t index, const StepRoleCallback& callback) const;
     int forEachStepRoleOfOutput(uint32_t index, const StepRoleCallback& callback) const;
@@ -85,8 +77,6 @@ class CompilationBuilder {
     bool createdWithExplicitDeviceList() const { return mExplicitDeviceList; }
 
     bool hasDynamicTemporaries() const { return mPlan.hasDynamicTemporaries(); }
-    bool isCacheInfoProvided() const { return mIsCacheInfoProvided; }
-    bool isFinished() const { return mFinished; }
 
     // These functions are solely intended for use by unit tests of the
     // partitioning algorithm.
@@ -94,12 +84,6 @@ class CompilationBuilder {
     int forTest_setPartitioning(uint32_t partitioning);
     int forTest_failPartitioning(
             int resultCode);  // If not ANEURALNETWORKS_NO_ERROR, then simulate partitioning failure
-
-    struct TelemetryInfo {
-        uint64_t compilationTimeNanos;
-        bool fallbackToCpuFromError;
-    };
-    const std::optional<TelemetryInfo>& getTelemetryInfo() const { return mTelemetryInfo; }
 
    private:
     const ModelBuilder* mModel;
@@ -140,15 +124,9 @@ class CompilationBuilder {
 
     // Amount of time to complete or abort the execution.
     std::optional<uint64_t> mTimeoutDuration;
-
-    // Supplementary compilation info for Telemetry use
-    std::optional<TelemetryInfo> mTelemetryInfo;
-
-    // Vendor specific metadata
-    std::vector<TokenValuePair> mMetadata;
 };
 
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_COMPILATION_BUILDER_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_RUNTIME_COMPILATION_BUILDER_H

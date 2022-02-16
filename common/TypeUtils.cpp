@@ -17,23 +17,18 @@
 #include "TypeUtils.h"
 
 #include <android-base/logging.h>
-#include <android-base/properties.h>
-#include <android-base/strings.h>
 
 #include <algorithm>
 #include <chrono>
 #include <limits>
 #include <memory>
 #include <ostream>
-#include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "OperandTypes.h"
 #include "OperationTypes.h"
-#include "OperationsUtils.h"
 #include "Result.h"
 #include "SharedMemory.h"
 #include "Types.h"
@@ -62,49 +57,6 @@ std::ostream& operator<<(std::ostream& os, const std::vector<Type>& vec) {
         }
     }
     return os << "]";
-}
-
-std::vector<Capabilities::OperandPerformance> makeOperandPerformance(
-        const Capabilities::PerformanceInfo& perfInfo) {
-    static constexpr OperandType kOperandTypes[] = {
-            OperandType::FLOAT32,
-            OperandType::INT32,
-            OperandType::UINT32,
-            OperandType::TENSOR_FLOAT32,
-            OperandType::TENSOR_INT32,
-            OperandType::TENSOR_QUANT8_ASYMM,
-            OperandType::BOOL,
-            OperandType::TENSOR_QUANT16_SYMM,
-            OperandType::TENSOR_FLOAT16,
-            OperandType::TENSOR_BOOL8,
-            OperandType::FLOAT16,
-            OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL,
-            OperandType::TENSOR_QUANT16_ASYMM,
-            OperandType::TENSOR_QUANT8_SYMM,
-            OperandType::TENSOR_QUANT8_ASYMM_SIGNED,
-            // OperandType::SUBGRAPH, OperandType::OEM, and OperandType::TENSOR_OEM_BYTE
-            // intentionally omitted.
-    };
-
-    std::vector<Capabilities::OperandPerformance> operandPerformance;
-    operandPerformance.reserve(std::size(kOperandTypes));
-    std::transform(std::begin(kOperandTypes), std::end(kOperandTypes),
-                   std::back_inserter(operandPerformance), [&perfInfo](OperandType op) {
-                       return Capabilities::OperandPerformance{.type = op, .info = perfInfo};
-                   });
-    return operandPerformance;
-}
-
-void update(std::vector<Capabilities::OperandPerformance>* operandPerformance, OperandType type,
-            const Capabilities::PerformanceInfo& info) {
-    CHECK(operandPerformance != nullptr);
-    auto it = std::lower_bound(operandPerformance->begin(), operandPerformance->end(), type,
-                               [](const Capabilities::OperandPerformance& perf, OperandType type) {
-                                   return perf.type < type;
-                               });
-    CHECK(it != operandPerformance->end());
-    CHECK_EQ(it->type, type);
-    it->info = info;
 }
 
 }  // namespace
@@ -194,18 +146,6 @@ std::optional<size_t> getNonExtensionSize(const Operand& operand) {
     return getNonExtensionSize(operand.type, operand.dimensions);
 }
 
-bool tensorHasUnspecifiedDimensions(OperandType type, const std::vector<uint32_t>& dimensions) {
-    if (!isExtension(type)) {
-        CHECK(!isNonExtensionScalar(type)) << "A scalar type can never have unspecified dimensions";
-    }
-    return dimensions.empty() ||
-           std::find(dimensions.begin(), dimensions.end(), 0) != dimensions.end();
-}
-
-bool tensorHasUnspecifiedDimensions(const Operand& operand) {
-    return tensorHasUnspecifiedDimensions(operand.type, operand.dimensions);
-}
-
 size_t getOffsetFromInts(int lower, int higher) {
     const int32_t lowBits = static_cast<int32_t>(lower);
     const int32_t highBits = static_cast<int32_t>(higher);
@@ -286,22 +226,6 @@ size_t getAlignmentForLength(size_t length) {
     } else {
         return 4;  // Align on 4-byte boundary
     }
-}
-
-Capabilities makeCapabilities(const Capabilities::PerformanceInfo& defaultInfo,
-                              const Capabilities::PerformanceInfo& float32Info,
-                              const Capabilities::PerformanceInfo& relaxedInfo) {
-    auto operandPerformance = makeOperandPerformance(defaultInfo);
-    update(&operandPerformance, OperandType::TENSOR_FLOAT32, float32Info);
-    update(&operandPerformance, OperandType::FLOAT32, float32Info);
-    auto table =
-            Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)).value();
-
-    return {.relaxedFloat32toFloat16PerformanceScalar = relaxedInfo,
-            .relaxedFloat32toFloat16PerformanceTensor = relaxedInfo,
-            .operandPerformance = std::move(table),
-            .ifPerformance = defaultInfo,
-            .whilePerformance = defaultInfo};
 }
 
 std::ostream& operator<<(std::ostream& os, const DeviceStatus& deviceStatus) {
@@ -424,12 +348,222 @@ std::ostream& operator<<(std::ostream& os, const Operand::LifeTime& lifetime) {
 }
 
 std::ostream& operator<<(std::ostream& os, const OperationType& operationType) {
-#define NN_HANDLE_SWITCH_CASE(opType) \
-    case OperationType::opType:       \
-        return os << #opType;
-    switch (operationType) { NN_FOR_EACH_OPERATION(NN_HANDLE_SWITCH_CASE) }
-#undef NN_HANDLE_SWITCH_CASE
-
+    switch (operationType) {
+        case OperationType::ADD:
+            return os << "ADD";
+        case OperationType::AVERAGE_POOL_2D:
+            return os << "AVERAGE_POOL_2D";
+        case OperationType::CONCATENATION:
+            return os << "CONCATENATION";
+        case OperationType::CONV_2D:
+            return os << "CONV_2D";
+        case OperationType::DEPTHWISE_CONV_2D:
+            return os << "DEPTHWISE_CONV_2D";
+        case OperationType::DEPTH_TO_SPACE:
+            return os << "DEPTH_TO_SPACE";
+        case OperationType::DEQUANTIZE:
+            return os << "DEQUANTIZE";
+        case OperationType::EMBEDDING_LOOKUP:
+            return os << "EMBEDDING_LOOKUP";
+        case OperationType::FLOOR:
+            return os << "FLOOR";
+        case OperationType::FULLY_CONNECTED:
+            return os << "FULLY_CONNECTED";
+        case OperationType::HASHTABLE_LOOKUP:
+            return os << "HASHTABLE_LOOKUP";
+        case OperationType::L2_NORMALIZATION:
+            return os << "L2_NORMALIZATION";
+        case OperationType::L2_POOL_2D:
+            return os << "L2_POOL_2D";
+        case OperationType::LOCAL_RESPONSE_NORMALIZATION:
+            return os << "LOCAL_RESPONSE_NORMALIZATION";
+        case OperationType::LOGISTIC:
+            return os << "LOGISTIC";
+        case OperationType::LSH_PROJECTION:
+            return os << "LSH_PROJECTION";
+        case OperationType::LSTM:
+            return os << "LSTM";
+        case OperationType::MAX_POOL_2D:
+            return os << "MAX_POOL_2D";
+        case OperationType::MUL:
+            return os << "MUL";
+        case OperationType::RELU:
+            return os << "RELU";
+        case OperationType::RELU1:
+            return os << "RELU1";
+        case OperationType::RELU6:
+            return os << "RELU6";
+        case OperationType::RESHAPE:
+            return os << "RESHAPE";
+        case OperationType::RESIZE_BILINEAR:
+            return os << "RESIZE_BILINEAR";
+        case OperationType::RNN:
+            return os << "RNN";
+        case OperationType::SOFTMAX:
+            return os << "SOFTMAX";
+        case OperationType::SPACE_TO_DEPTH:
+            return os << "SPACE_TO_DEPTH";
+        case OperationType::SVDF:
+            return os << "SVDF";
+        case OperationType::TANH:
+            return os << "TANH";
+        case OperationType::BATCH_TO_SPACE_ND:
+            return os << "BATCH_TO_SPACE_ND";
+        case OperationType::DIV:
+            return os << "DIV";
+        case OperationType::MEAN:
+            return os << "MEAN";
+        case OperationType::PAD:
+            return os << "PAD";
+        case OperationType::SPACE_TO_BATCH_ND:
+            return os << "SPACE_TO_BATCH_ND";
+        case OperationType::SQUEEZE:
+            return os << "SQUEEZE";
+        case OperationType::STRIDED_SLICE:
+            return os << "STRIDED_SLICE";
+        case OperationType::SUB:
+            return os << "SUB";
+        case OperationType::TRANSPOSE:
+            return os << "TRANSPOSE";
+        case OperationType::ABS:
+            return os << "ABS";
+        case OperationType::ARGMAX:
+            return os << "ARGMAX";
+        case OperationType::ARGMIN:
+            return os << "ARGMIN";
+        case OperationType::AXIS_ALIGNED_BBOX_TRANSFORM:
+            return os << "AXIS_ALIGNED_BBOX_TRANSFORM";
+        case OperationType::BIDIRECTIONAL_SEQUENCE_LSTM:
+            return os << "BIDIRECTIONAL_SEQUENCE_LSTM";
+        case OperationType::BIDIRECTIONAL_SEQUENCE_RNN:
+            return os << "BIDIRECTIONAL_SEQUENCE_RNN";
+        case OperationType::BOX_WITH_NMS_LIMIT:
+            return os << "BOX_WITH_NMS_LIMIT";
+        case OperationType::CAST:
+            return os << "CAST";
+        case OperationType::CHANNEL_SHUFFLE:
+            return os << "CHANNEL_SHUFFLE";
+        case OperationType::DETECTION_POSTPROCESSING:
+            return os << "DETECTION_POSTPROCESSING";
+        case OperationType::EQUAL:
+            return os << "EQUAL";
+        case OperationType::EXP:
+            return os << "EXP";
+        case OperationType::EXPAND_DIMS:
+            return os << "EXPAND_DIMS";
+        case OperationType::GATHER:
+            return os << "GATHER";
+        case OperationType::GENERATE_PROPOSALS:
+            return os << "GENERATE_PROPOSALS";
+        case OperationType::GREATER:
+            return os << "GREATER";
+        case OperationType::GREATER_EQUAL:
+            return os << "GREATER_EQUAL";
+        case OperationType::GROUPED_CONV_2D:
+            return os << "GROUPED_CONV_2D";
+        case OperationType::HEATMAP_MAX_KEYPOINT:
+            return os << "HEATMAP_MAX_KEYPOINT";
+        case OperationType::INSTANCE_NORMALIZATION:
+            return os << "INSTANCE_NORMALIZATION";
+        case OperationType::LESS:
+            return os << "LESS";
+        case OperationType::LESS_EQUAL:
+            return os << "LESS_EQUAL";
+        case OperationType::LOG:
+            return os << "LOG";
+        case OperationType::LOGICAL_AND:
+            return os << "LOGICAL_AND";
+        case OperationType::LOGICAL_NOT:
+            return os << "LOGICAL_NOT";
+        case OperationType::LOGICAL_OR:
+            return os << "LOGICAL_OR";
+        case OperationType::LOG_SOFTMAX:
+            return os << "LOG_SOFTMAX";
+        case OperationType::MAXIMUM:
+            return os << "MAXIMUM";
+        case OperationType::MINIMUM:
+            return os << "MINIMUM";
+        case OperationType::NEG:
+            return os << "NEG";
+        case OperationType::NOT_EQUAL:
+            return os << "NOT_EQUAL";
+        case OperationType::PAD_V2:
+            return os << "PAD_V2";
+        case OperationType::POW:
+            return os << "POW";
+        case OperationType::PRELU:
+            return os << "PRELU";
+        case OperationType::QUANTIZE:
+            return os << "QUANTIZE";
+        case OperationType::QUANTIZED_16BIT_LSTM:
+            return os << "QUANTIZED_16BIT_LSTM";
+        case OperationType::RANDOM_MULTINOMIAL:
+            return os << "RANDOM_MULTINOMIAL";
+        case OperationType::REDUCE_ALL:
+            return os << "REDUCE_ALL";
+        case OperationType::REDUCE_ANY:
+            return os << "REDUCE_ANY";
+        case OperationType::REDUCE_MAX:
+            return os << "REDUCE_MAX";
+        case OperationType::REDUCE_MIN:
+            return os << "REDUCE_MIN";
+        case OperationType::REDUCE_PROD:
+            return os << "REDUCE_PROD";
+        case OperationType::REDUCE_SUM:
+            return os << "REDUCE_SUM";
+        case OperationType::ROI_ALIGN:
+            return os << "ROI_ALIGN";
+        case OperationType::ROI_POOLING:
+            return os << "ROI_POOLING";
+        case OperationType::RSQRT:
+            return os << "RSQRT";
+        case OperationType::SELECT:
+            return os << "SELECT";
+        case OperationType::SIN:
+            return os << "SIN";
+        case OperationType::SLICE:
+            return os << "SLICE";
+        case OperationType::SPLIT:
+            return os << "SPLIT";
+        case OperationType::SQRT:
+            return os << "SQRT";
+        case OperationType::TILE:
+            return os << "TILE";
+        case OperationType::TOPK_V2:
+            return os << "TOPK_V2";
+        case OperationType::TRANSPOSE_CONV_2D:
+            return os << "TRANSPOSE_CONV_2D";
+        case OperationType::UNIDIRECTIONAL_SEQUENCE_LSTM:
+            return os << "UNIDIRECTIONAL_SEQUENCE_LSTM";
+        case OperationType::UNIDIRECTIONAL_SEQUENCE_RNN:
+            return os << "UNIDIRECTIONAL_SEQUENCE_RNN";
+        case OperationType::RESIZE_NEAREST_NEIGHBOR:
+            return os << "RESIZE_NEAREST_NEIGHBOR";
+        case OperationType::QUANTIZED_LSTM:
+            return os << "QUANTIZED_LSTM";
+        case OperationType::IF:
+            return os << "IF";
+        case OperationType::WHILE:
+            return os << "WHILE";
+        case OperationType::ELU:
+            return os << "ELU";
+        case OperationType::HARD_SWISH:
+            return os << "HARD_SWISH";
+        case OperationType::FILL:
+            return os << "FILL";
+        case OperationType::RANK:
+            return os << "RANK";
+        case OperationType::BATCH_MATMUL:
+            return os << "BATCH_MATMUL";
+        case OperationType::PACK:
+            return os << "PACK";
+        case OperationType::MIRROR_PAD:
+            return os << "MIRROR_PAD";
+        case OperationType::REVERSE:
+            return os << "REVERSE";
+        case OperationType::OEM_OPERATION:
+            return os << "OEM_OPERATION";
+    }
     if (isExtension(operationType)) {
         return os << "Extension OperationType " << underlyingType(operationType);
     }
@@ -594,7 +728,8 @@ std::ostream& operator<<(std::ostream& os, const Operation& operation) {
 }
 
 static std::ostream& operator<<(std::ostream& os, const Handle& handle) {
-    return os << (handle.ok() ? "<valid handle>" : "<invalid handle>");
+    return os << "<handle with " << handle.fds.size() << " fds and " << handle.ints.size()
+              << " ints>";
 }
 
 std::ostream& operator<<(std::ostream& os, const SharedHandle& handle) {
@@ -620,11 +755,6 @@ static std::ostream& operator<<(std::ostream& os, const Memory::HardwareBuffer& 
         return os << "<empty HardwareBuffer::Handle>";
     }
     return os << (isAhwbBlob(memory) ? "<AHardwareBuffer blob>" : "<non-blob AHardwareBuffer>");
-}
-
-static std::ostream& operator<<(std::ostream& os, const Memory::Unknown::Handle& handle) {
-    return os << "<handle with " << handle.fds.size() << " fds and " << handle.ints.size()
-              << " ints>";
 }
 
 static std::ostream& operator<<(std::ostream& os, const Memory::Unknown& memory) {
@@ -665,8 +795,9 @@ std::ostream& operator<<(std::ostream& os, const Model::OperandValues& operandVa
     return os << "Model::OperandValues{<" << operandValues.size() << "bytes>}";
 }
 
-std::ostream& operator<<(std::ostream& os, const ExtensionNameAndPrefix& extensionNameAndPrefix) {
-    return os << "ExtensionNameAndPrefix{.name=" << extensionNameAndPrefix.name
+std::ostream& operator<<(std::ostream& os,
+                         const Model::ExtensionNameAndPrefix& extensionNameAndPrefix) {
+    return os << "Model::ExtensionNameAndPrefix{.name=" << extensionNameAndPrefix.name
               << ", .prefix=" << extensionNameAndPrefix.prefix << "}";
 }
 
@@ -753,38 +884,44 @@ std::ostream& operator<<(std::ostream& os, const OptionalDuration& optionalTimeo
     return os << optionalTimeoutDuration.value();
 }
 
-std::ostream& operator<<(std::ostream& os, const Version::Level& versionLevel) {
-    switch (versionLevel) {
-        case Version::Level::FEATURE_LEVEL_1:
-            return os << "FEATURE_LEVEL_1";
-        case Version::Level::FEATURE_LEVEL_2:
-            return os << "FEATURE_LEVEL_2";
-        case Version::Level::FEATURE_LEVEL_3:
-            return os << "FEATURE_LEVEL_3";
-        case Version::Level::FEATURE_LEVEL_4:
-            return os << "FEATURE_LEVEL_4";
-        case Version::Level::FEATURE_LEVEL_5:
-            return os << "FEATURE_LEVEL_5";
-        case Version::Level::FEATURE_LEVEL_6:
+std::ostream& operator<<(std::ostream& os, const Version& version) {
+    switch (version) {
+        case Version::ANDROID_OC_MR1:
+            return os << "ANDROID_OC_MR1";
+        case Version::ANDROID_P:
+            return os << "ANDROID_P";
+        case Version::ANDROID_Q:
+            return os << "ANDROID_Q";
+        case Version::ANDROID_R:
+            return os << "ANDROID_R";
+        case Version::ANDROID_S:
+            return os << "ANDROID_S";
+        case Version::FEATURE_LEVEL_6:
             return os << "FEATURE_LEVEL_6";
-        case Version::Level::FEATURE_LEVEL_7:
+        case Version::FEATURE_LEVEL_7:
             return os << "FEATURE_LEVEL_7";
-        case Version::Level::FEATURE_LEVEL_8:
-            return os << "FEATURE_LEVEL_8";
-#ifdef NN_EXPERIMENTAL_FEATURE
-        case Version::Level::FEATURE_LEVEL_EXPERIMENTAL:
-            return os << "FEATURE_LEVEL_EXPERIMENTAL";
-#endif  // NN_EXPERIMENTAL_FEATURE
+        case Version::CURRENT_RUNTIME:
+            return os << "CURRENT_RUNTIME";
     }
-    return os << "Version{" << static_cast<uint32_t>(underlyingType(versionLevel)) << "}";
+    return os << "Version{" << underlyingType(version) << "}";
 }
 
-std::ostream& operator<<(std::ostream& os, const Version& version) {
-    os << version.level;
-    if (version.runtimeOnlyFeatures) {
-        os << " (with runtime-specific features)";
+std::ostream& operator<<(std::ostream& os, const HalVersion& halVersion) {
+    switch (halVersion) {
+        case HalVersion::UNKNOWN:
+            return os << "UNKNOWN HAL version";
+        case HalVersion::V1_0:
+            return os << "HAL version 1.0";
+        case HalVersion::V1_1:
+            return os << "HAL version 1.1";
+        case HalVersion::V1_2:
+            return os << "HAL version 1.2";
+        case HalVersion::V1_3:
+            return os << "HAL version 1.3";
+        case HalVersion::AIDL_UNSTABLE:
+            return os << "HAL uses unstable AIDL";
     }
-    return os;
+    return os << "HalVersion{" << underlyingType(halVersion) << "}";
 }
 
 bool operator==(const Timing& a, const Timing& b) {
@@ -881,61 +1018,6 @@ bool operator==(const Operation& a, const Operation& b) {
 }
 bool operator!=(const Operation& a, const Operation& b) {
     return !(a == b);
-}
-
-bool operator==(const Version& a, const Version& b) {
-    return a.level == b.level && a.runtimeOnlyFeatures == b.runtimeOnlyFeatures;
-}
-bool operator!=(const Version& a, const Version& b) {
-    return !(a == b);
-}
-
-const char kVLogPropKey[] = "debug.nn.vlog";
-int vLogMask = ~0;
-
-// Split the space separated list of tags from verbose log setting and build the
-// logging mask from it. note that '1' and 'all' are special cases to enable all
-// verbose logging.
-//
-// NN API verbose logging setting comes from system property debug.nn.vlog.
-// Example:
-// setprop debug.nn.vlog 1 : enable all logging tags.
-// setprop debug.nn.vlog "model compilation" : only enable logging for MODEL and
-//                                             COMPILATION tags.
-void initVLogMask() {
-    vLogMask = 0;
-    const std::string vLogSetting = android::base::GetProperty(kVLogPropKey, "");
-    if (vLogSetting.empty()) {
-        return;
-    }
-
-    std::unordered_map<std::string, int> vLogFlags = {{"1", -1},
-                                                      {"all", -1},
-                                                      {"model", MODEL},
-                                                      {"compilation", COMPILATION},
-                                                      {"execution", EXECUTION},
-                                                      {"cpuexe", CPUEXE},
-                                                      {"manager", MANAGER},
-                                                      {"driver", DRIVER},
-                                                      {"memory", MEMORY}};
-
-    std::vector<std::string> elements = android::base::Split(vLogSetting, " ,:");
-    for (const auto& elem : elements) {
-        const auto& flag = vLogFlags.find(elem);
-        if (flag == vLogFlags.end()) {
-            LOG(ERROR) << "Unknown trace flag: " << elem;
-            continue;
-        }
-
-        if (flag->second == -1) {
-            // -1 is used for the special values "1" and "all" that enable all
-            // tracing.
-            vLogMask = ~0;
-            return;
-        } else {
-            vLogMask |= 1 << flag->second;
-        }
-    }
 }
 
 }  // namespace android::nn
