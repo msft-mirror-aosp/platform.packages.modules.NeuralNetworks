@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "LocalResponseNormalization.h"
-
 #include <algorithm>
 #include <vector>
 
@@ -25,12 +23,7 @@
 #include "Tracing.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -39,13 +32,26 @@ namespace android {
 namespace nn {
 namespace local_response_norm {
 
+constexpr char kOperationName[] = "LOCAL_RESPONSE_NORMALIZATION";
+
+constexpr uint32_t kNumInputs = 6;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kRadiusScalar = 1;
+constexpr uint32_t kBiasScalar = 2;
+constexpr uint32_t kAlphaScalar = 3;
+constexpr uint32_t kBetaScalar = 4;
+constexpr uint32_t kAxisScalar = 5;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
+
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 inline bool localResponseNormFloat32Impl(const float* inputData, const Shape& inputShape,
                                          int32_t radius, float bias, float alpha, float beta,
                                          int32_t axis, float* outputData,
-                                         const Shape& /*outputShape*/) {
+                                         const Shape& outputShape) {
     NNTRACE_TRANS("localResponseNormFloat32");
     const uint32_t outerSize = getNumberOfElements(inputShape, 0, axis);
     const uint32_t axisSize = getSizeOfDimension(inputShape, axis);
@@ -55,7 +61,7 @@ inline bool localResponseNormFloat32Impl(const float* inputData, const Shape& in
         const float* inputBase = inputData + outer * axisSize * innerSize;
         float* outputBase = outputData + outer * axisSize * innerSize;
         for (uint32_t inner = 0; inner < innerSize; ++inner, ++inputBase, ++outputBase) {
-            for (int32_t i = 0; i < static_cast<int32_t>(axisSize); i++) {
+            for (int32_t i = 0; i < axisSize; i++) {
                 const int32_t dBegin = std::max(0, i - radius);
                 // Add 1 on dEnd to comply with optimized_ops in TFLite
                 const int32_t dEnd = std::min(static_cast<int32_t>(axisSize), i + radius + 1);
@@ -128,7 +134,52 @@ bool executeTyped(IOperationExecutionContext* context) {
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK(context->getNumInputs() == kNumInputs ||
+                 context->getNumInputs() == kNumInputs - 1);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+
+    const OperandType inputType = context->getInputType(kInputTensor);
+    std::vector<OperandType> inExpectedTypes;
+    std::vector<OperandType> outExpectedTypes;
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_FLOAT32) {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+        inExpectedTypes = {
+                OperandType::TENSOR_FLOAT32, OperandType::INT32,   OperandType::FLOAT32,
+                OperandType::FLOAT32,        OperandType::FLOAT32,
+        };
+        outExpectedTypes = {OperandType::TENSOR_FLOAT32};
+    } else if (inputType == OperandType::TENSOR_FLOAT16) {
+        minSupportedVersion = Version::ANDROID_Q;
+        inExpectedTypes = {
+                OperandType::TENSOR_FLOAT16, OperandType::INT32,   OperandType::FLOAT16,
+                OperandType::FLOAT16,        OperandType::FLOAT16,
+        };
+        outExpectedTypes = {OperandType::TENSOR_FLOAT16};
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
+    }
+
+    if (context->getNumInputs() == kNumInputs) {
+        inExpectedTypes.push_back(OperandType::INT32);
+        minSupportedVersion = Version::ANDROID_Q;
+    } else if (context->getInputShape(kInputTensor).dimensions.size() != 4) {
+        minSupportedVersion = Version::ANDROID_Q;
+    }
+
+    const Shape& input = context->getInputShape(kInputTensor);
+    if (hasKnownRank(input)) {
+        NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
+    }
+    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     const Shape& input = context->getInputShape(kInputTensor);
     int32_t numDimensions = getNumberOfDimensions(input);

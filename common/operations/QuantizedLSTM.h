@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_QUANTIZED_LSTM_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_QUANTIZED_LSTM_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_QUANTIZED_LSTM_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_QUANTIZED_LSTM_H
 
 #include <vector>
 
@@ -23,11 +23,6 @@
 
 namespace android {
 namespace nn {
-namespace quantized_16bit_lstm {
-
-Result<Version> validate(const IOperationValidationContext* context);
-
-}  // namespace quantized_16bit_lstm
 
 struct RunTimeOperandInfo;
 
@@ -97,4 +92,4 @@ class QuantizedLSTMCell {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_QUANTIZED_LSTM_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_QUANTIZED_LSTM_H
