@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "Conv2D.h"
-
 #include <algorithm>
 #include <iterator>
 #include <memory>
@@ -30,14 +28,9 @@
 #include "Tracing.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/conv.h>
 #include <tensorflow/lite/kernels/internal/types.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -46,12 +39,21 @@ namespace android {
 namespace nn {
 namespace conv_2d {
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
+constexpr char kOperationName[] = "CONV_2D";
+
+constexpr uint32_t kNumInputsArray[] = {7, 8, 10, 11, 13};
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kFilterTensor = 1;
+constexpr uint32_t kBiasTensor = 2;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
+
 namespace {
 
 // If possible we will use this static buffer for the tensor.
 constexpr size_t kStaticBufferSize = 1605632;
-[[maybe_unused]] char static_scratch_buffer[kStaticBufferSize];
+char static_scratch_buffer[kStaticBufferSize];
 
 // executionMutex is used to protect concurrent access of the static_scratch_buffer
 // and other non-threadsafe resources like gemmlowp::GemmContext.
@@ -127,13 +129,14 @@ struct Conv2dParam {
     }
 };
 
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 #define ANDROID_NN_CONV_PARAMETERS(Type)                                          \
-    [[maybe_unused]] uint32_t height = getSizeOfDimension(inputShape, 1);         \
-    [[maybe_unused]] uint32_t width = getSizeOfDimension(inputShape, 2);          \
+    uint32_t height = getSizeOfDimension(inputShape, 1);                          \
+    uint32_t width = getSizeOfDimension(inputShape, 2);                           \
     uint32_t filterHeight = getSizeOfDimension(filterShape, 1);                   \
     uint32_t filterWidth = getSizeOfDimension(filterShape, 2);                    \
-    [[maybe_unused]] uint32_t outHeight = getSizeOfDimension(outputShape, 1);     \
-    [[maybe_unused]] uint32_t outWidth = getSizeOfDimension(outputShape, 2);      \
+    uint32_t outHeight = getSizeOfDimension(outputShape, 1);                      \
+    uint32_t outWidth = getSizeOfDimension(outputShape, 2);                       \
     uint32_t inDepth = getSizeOfDimension(inputShape, 3);                         \
                                                                                   \
     uint32_t paddingHeight = (uint32_t)padding_top;                               \
@@ -190,8 +193,8 @@ bool needim2colData(const Shape& filterShape, int32_t stride_width, int32_t stri
 
 bool convNhwc(const float* inputData, const Shape& inputShape, const float* filterData,
               const Shape& filterShape, const float* biasData, const Shape& biasShape,
-              int32_t padding_left, int32_t /*padding_right*/, int32_t padding_top,
-              int32_t /*padding_bottom*/, int32_t stride_width, int32_t stride_height,
+              int32_t padding_left, int32_t padding_right, int32_t padding_top,
+              int32_t padding_bottom, int32_t stride_width, int32_t stride_height,
               int32_t dilation_width_factor, int32_t dilation_height_factor, int32_t activation,
               float* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("convFloat32");
@@ -219,8 +222,8 @@ bool convNhwc(const float* inputData, const Shape& inputShape, const float* filt
 
 bool convNhwc(const uint8_t* inputData, const Shape& inputShape, const uint8_t* filterData,
               const Shape& filterShape, const int32_t* biasData, const Shape& biasShape,
-              int32_t padding_left, int32_t /*padding_right*/, int32_t padding_top,
-              int32_t /*padding_bottom*/, int32_t stride_width, int32_t stride_height,
+              int32_t padding_left, int32_t padding_right, int32_t padding_top,
+              int32_t padding_bottom, int32_t stride_width, int32_t stride_height,
               int32_t dilation_width_factor, int32_t dilation_height_factor, int32_t activation,
               uint8_t* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("convQuant8");
@@ -349,8 +352,8 @@ bool conv(const T_Input* inputData, const Shape& inputShape, const T_Filter* fil
 bool convQuant8PerChannelNhwc(const uint8_t* inputData, const Shape& inputShape,
                               const int8_t* filterData, const Shape& filterShape,
                               const float* filterScales, const int32_t* biasData,
-                              const Shape& biasShape, int32_t paddingLeft, int32_t /*paddingRight*/,
-                              int32_t paddingTop, int32_t /*paddingBottom*/, int32_t strideWidth,
+                              const Shape& biasShape, int32_t paddingLeft, int32_t paddingRight,
+                              int32_t paddingTop, int32_t paddingBottom, int32_t strideWidth,
                               int32_t strideHeight, int32_t dilationWidthFactor,
                               int32_t dilationHeightFactor, int32_t activation, uint8_t* outputData,
                               const Shape& outputShape) {
@@ -374,7 +377,7 @@ bool convQuant8PerChannelNhwc(const uint8_t* inputData, const Shape& inputShape,
     auto outputMultiplier = std::vector<int32_t>(outputDepth, 0);
     auto outputShift = std::vector<int32_t>(outputDepth, .0f);
 
-    for (uint32_t i = 0; i < outputDepth; ++i) {
+    for (int i = 0; i < outputDepth; ++i) {
         Shape filterChannelShape = filterShape;
         filterChannelShape.scale = filterScales[i];
         Shape biasChannelShape = biasShape;
@@ -442,32 +445,32 @@ bool convQuant8PerChannelNhwc(const uint8_t* inputData, const Shape& inputShape,
 bool convQuant8PerChannelNhwc(const int8_t* inputData, const Shape& inputShape,
                               const int8_t* filterData, const Shape& filterShape,
                               const float* filterScales, const int32_t* biasData,
-                              const Shape& biasShape, int32_t paddingLeft, int32_t /*paddingRight*/,
-                              int32_t paddingTop, int32_t /*paddingBottom*/, int32_t strideWidth,
+                              const Shape& biasShape, int32_t paddingLeft, int32_t paddingRight,
+                              int32_t paddingTop, int32_t paddingBottom, int32_t strideWidth,
                               int32_t strideHeight, int32_t dilationWidthFactor,
                               int32_t dilationHeightFactor, int32_t activation, int8_t* outputData,
                               const Shape& outputShape) {
     NNTRACE_TRANS("convQuant8SignedPerChannel");
 
-    [[maybe_unused]] uint32_t numBatches = getSizeOfDimension(inputShape, 0);
-    [[maybe_unused]] uint32_t inputHeight = getSizeOfDimension(inputShape, 1);
-    [[maybe_unused]] uint32_t inputWidth = getSizeOfDimension(inputShape, 2);
-    [[maybe_unused]] uint32_t inputDepth = getSizeOfDimension(inputShape, 3);
-    [[maybe_unused]] uint32_t filterHeight = getSizeOfDimension(filterShape, 1);
-    [[maybe_unused]] uint32_t filterWidth = getSizeOfDimension(filterShape, 2);
-    [[maybe_unused]] uint32_t filterDepth = getSizeOfDimension(filterShape, 3);
-    [[maybe_unused]] uint32_t outputHeight = getSizeOfDimension(outputShape, 1);
-    [[maybe_unused]] uint32_t outputWidth = getSizeOfDimension(outputShape, 2);
+    uint32_t numBatches = getSizeOfDimension(inputShape, 0);
+    uint32_t inputHeight = getSizeOfDimension(inputShape, 1);
+    uint32_t inputWidth = getSizeOfDimension(inputShape, 2);
+    uint32_t inputDepth = getSizeOfDimension(inputShape, 3);
+    uint32_t filterHeight = getSizeOfDimension(filterShape, 1);
+    uint32_t filterWidth = getSizeOfDimension(filterShape, 2);
+    uint32_t filterDepth = getSizeOfDimension(filterShape, 3);
+    uint32_t outputHeight = getSizeOfDimension(outputShape, 1);
+    uint32_t outputWidth = getSizeOfDimension(outputShape, 2);
     uint32_t outputDepth = getSizeOfDimension(outputShape, 3);
 
-    [[maybe_unused]] int32_t inputOffset = -inputShape.offset;
-    [[maybe_unused]] int32_t outputOffset = outputShape.offset;
+    int32_t inputOffset = -inputShape.offset;
+    int32_t outputOffset = outputShape.offset;
 
     auto realMultiplier = std::vector<double>(outputDepth, .0f);
     auto outputMultiplier = std::vector<int32_t>(outputDepth, 0);
     auto outputShift = std::vector<int32_t>(outputDepth, .0f);
 
-    for (uint32_t i = 0; i < outputDepth; ++i) {
+    for (int i = 0; i < outputDepth; ++i) {
         Shape filterChannelShape = filterShape;
         filterChannelShape.scale = filterScales[i];
         Shape biasChannelShape = biasShape;
@@ -524,9 +527,112 @@ bool convQuant8PerChannel(const T* inputData, const Shape& inputShape, const int
 }
 
 #undef ANDROID_NN_CONV_PARAMETERS
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    const uint32_t numInputs = context->getNumInputs();
+    NN_RET_CHECK(
+            std::binary_search(std::begin(kNumInputsArray), std::end(kNumInputsArray), numInputs));
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+    const auto inputRank = getNumberOfDimensions(context->getInputShape(kInputTensor));
+    const auto filterRank = getNumberOfDimensions(context->getInputShape(kFilterTensor));
+    if (inputRank != 0) {
+        NN_RET_CHECK_EQ(inputRank, 4);
+    }
+    if (filterRank != 0) {
+        NN_RET_CHECK_EQ(filterRank, 4);
+    }
+    auto inputCount = context->getNumInputs();
+    auto inputType = context->getInputType(kInputTensor);
+    auto filterType = context->getInputType(kFilterTensor);
+    std::vector<OperandType> inExpectedTypes;
+    if (inputType == OperandType::TENSOR_FLOAT32) {
+        inExpectedTypes = {OperandType::TENSOR_FLOAT32, OperandType::TENSOR_FLOAT32,
+                           OperandType::TENSOR_FLOAT32, OperandType::INT32,
+                           OperandType::INT32,          OperandType::INT32,
+                           OperandType::INT32};
+    } else if (inputType == OperandType::TENSOR_FLOAT16) {
+        inExpectedTypes = {OperandType::TENSOR_FLOAT16, OperandType::TENSOR_FLOAT16,
+                           OperandType::TENSOR_FLOAT16, OperandType::INT32,
+                           OperandType::INT32,          OperandType::INT32,
+                           OperandType::INT32};
+    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM ||
+               inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        NN_RET_CHECK(filterType == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL ||
+                     filterType == inputType)
+                << "Unsupported filter tensor type for operation " << kOperationName;
+        inExpectedTypes = {inputType,          filterType,         OperandType::TENSOR_INT32,
+                           OperandType::INT32, OperandType::INT32, OperandType::INT32,
+                           OperandType::INT32};
+
+        if (filterType == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL) {
+            NN_RET_CHECK_EQ(std::get<Operand::SymmPerChannelQuantParams>(
+                                    context->getInputExtraParams(kFilterTensor))
+                                    .channelDim,
+                            0)
+                    << "Unsupported filter tensor channel dimension for operation "
+                    << kOperationName;
+        }
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported input tensor type for operation " << kOperationName;
+    }
+
+    // NeuralNetworks.h specifies that ANEURALNETWORKS_CONV_2D's output must
+    // meet "outputScale > inputScale * filterScale" for the operand type
+    // ANEURALNETWORKS_TENSOR_QUANT8_ASYMM before API level 29. For other
+    // operand types (e.g., ANEURALNETWORKS_TENSOR_FLOAT32), this constraint
+    // does not apply, so by default the constraint is met.
+    bool meetsQuantizedScaleConstraintBeforeV1_2 = true;
+    if (inputType == OperandType::TENSOR_QUANT8_ASYMM) {
+        const float inputScale = context->getInputShape(kInputTensor).scale;
+        const float filterScale = context->getInputShape(kFilterTensor).scale;
+        const float outputScale = context->getInputShape(kOutputTensor).scale;
+        meetsQuantizedScaleConstraintBeforeV1_2 = (outputScale > inputScale * filterScale);
+    }
+
+    bool withExplicitPadding = false;
+    bool withLayout = false;
+    bool withDilation = false;
+    if (inputCount >= 8) {
+        if (context->getInputType(7) == OperandType::INT32 && inputCount >= 10) {
+            std::vector<OperandType> explicitScalarTypes(3, OperandType::INT32);
+            inExpectedTypes.insert(inExpectedTypes.end(), explicitScalarTypes.begin(),
+                                   explicitScalarTypes.end());
+            withExplicitPadding = true;
+        }
+        int inputOffset = withExplicitPadding ? 3 : 0;
+        if (inputCount >= 8 + inputOffset) {
+            inExpectedTypes.push_back(OperandType::BOOL);
+            withLayout = true;
+        }
+        NN_RET_CHECK_NE(inputCount, 9 + inputOffset)
+                << "Provided only one dilation factor value, two values are requred for operation "
+                << kOperationName;
+        if (inputCount == 10 + inputOffset) {
+            inExpectedTypes.push_back(OperandType::INT32);
+            inExpectedTypes.push_back(OperandType::INT32);
+            withDilation = true;
+        }
+    }
+
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+    } else if (inputType == OperandType::TENSOR_FLOAT16 ||
+               filterType == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL || withLayout ||
+               withDilation || !meetsQuantizedScaleConstraintBeforeV1_2) {
+        minSupportedVersion = Version::ANDROID_Q;
+    } else {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+    }
+    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     Shape filter = context->getInputShape(kFilterTensor);
@@ -544,9 +650,9 @@ bool prepare(IOperationExecutionContext* context) {
     } else {
         NN_RET_CHECK(input.type == bias.type);
     }
-    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(filter), 4u);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(bias), 1u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(filter), 4);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(bias), 1);
 
     Conv2dParam param;
     NN_RET_CHECK(param.initialize(context));
@@ -561,10 +667,10 @@ bool prepare(IOperationExecutionContext* context) {
     // Only batches can be zero.
     NN_RET_CHECK_EQ(channels_in, getSizeOfDimension(filter, 3));
     NN_RET_CHECK_EQ(channels_out, getSizeOfDimension(bias, 0));
-    NN_RET_CHECK_GT(height, 0u);
-    NN_RET_CHECK_GT(width, 0u);
-    NN_RET_CHECK_GT(channels_in, 0u);
-    NN_RET_CHECK_GT(channels_out, 0u);
+    NN_RET_CHECK_GT(height, 0);
+    NN_RET_CHECK_GT(width, 0);
+    NN_RET_CHECK_GT(channels_in, 0);
+    NN_RET_CHECK_GT(channels_out, 0);
 
     int32_t effectiveFilterWidth = (filterWidth - 1) * param.dilation_width_factor + 1;
     int32_t effectiveFilterHeight = (filterHeight - 1) * param.dilation_height_factor + 1;

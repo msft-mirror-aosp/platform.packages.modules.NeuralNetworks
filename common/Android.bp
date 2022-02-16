@@ -15,38 +15,17 @@
  */
 
 package {
-    // Inherits all licenses from parent to get Apache 2.0 and package name
-    default_applicable_licenses: [
-        "packages_modules_NeuralNetworks_license",
-    ],
+    default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
 cc_library_headers {
     name: "libneuralnetworks_common_headers",
-    host_supported: true,
+    host_supported: false,
     export_include_dirs: ["include"],
 }
 
-// The following files took too much time to compile with clang-tidy.
-tidy_disabled_common_operations_files = [
-    "operations/Activation.cpp",
-    "operations/Broadcast.cpp",
-    "operations/Concatenation.cpp",
-    "operations/Conv2D.cpp",
-    "operations/FullyConnected.cpp",
-    "operations/L2Normalization.cpp",
-    "operations/LocalResponseNormalization.cpp",
-    "operations/PRelu.cpp",
-    "operations/Pooling.cpp",
-    "operations/Reshape.cpp",
-    "operations/SimpleMath.cpp",
-    "operations/Softmax.cpp",
-    "operations/Transpose.cpp",
-]
-
 cc_defaults {
     name: "neuralnetworks_operations",
-    host_supported: true,
     srcs: [
         "OperationResolver.cpp",
         "operations/Activation.cpp",
@@ -57,7 +36,6 @@ cc_defaults {
         "operations/Comparisons.cpp",
         "operations/Concatenation.cpp",
         "operations/Conv2D.cpp",
-        "operations/Densify.cpp",
         "operations/DepthwiseConv2D.cpp",
         "operations/Dequantize.cpp",
         "operations/Elementwise.cpp",
@@ -97,30 +75,87 @@ cc_defaults {
         "operations/UnidirectionalSequenceLSTM.cpp",
         "operations/UnidirectionalSequenceRNN.cpp",
     ],
-    tidy_disabled_srcs: tidy_disabled_common_operations_files,
 }
 
-// libneuralnetworks_common* provides common utilities for the NNAPI runtime, drivers, and tests to
-// use. Two variants of the common library are provided:
-// - libneuralnetworks_common: the common library, used by NNAPI runtime and tests.
-// - libneuralnetworks_common_experimental: the common library with NN_EXPERIMENTAL_FEATURE flag
-//   turned on, used by NNAPI drivers and tests for experimental features.
-//
-// Both variants of the common library also link against all versions (1.0-3) of the NNAPI HIDL
-// library.
-//
-cc_defaults {
-    name: "libneuralnetworks_common_defaults",
+cc_library_static {
+    name: "libneuralnetworks_utils",
     defaults: [
         "neuralnetworks_defaults",
         "neuralnetworks_operations",
     ],
-    host_supported: true,
+    host_supported: false,
+    vendor_available: true,
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
         "test_com.android.neuralnetworks",
     ],
+    export_include_dirs: ["include"],
+    srcs: [
+        "AidlHalUtils.cpp",
+        "ExecutionBurstController.cpp",
+        "ExecutionBurstServer.cpp",
+        "LegacyHalUtils.cpp",
+        "LegacyUtils.cpp",
+        "MemoryUtils.cpp",
+    ],
+    header_libs: [
+        "gemmlowp_headers",
+        "libeigen",
+        "libneuralnetworks_headers",
+        "libruy_headers",
+        "tensorflow_headers",
+    ],
+    shared_libs: [
+        "android.hardware.neuralnetworks-V3-ndk",
+        "android.hardware.neuralnetworks@1.0",
+        "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
+        "android.hardware.neuralnetworks@1.3",
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
+        "libfmq",
+        "libhidlbase",
+        "libhidlmemory",
+        "libnativewindow",
+    ],
+    whole_static_libs: [
+        "libarect",
+        "neuralnetworks_types",
+        "neuralnetworks_utils_hal_1_0", // TODO(b/160669116): Remove VNDK dependencies.
+        "neuralnetworks_utils_hal_1_1",
+        "neuralnetworks_utils_hal_1_2",
+        "neuralnetworks_utils_hal_1_3",
+        "neuralnetworks_utils_hal_aidl",
+        "neuralnetworks_utils_hal_common",
+    ],
+    cflags: [
+        "-DTF_LITE_DISABLE_X86_NEON",
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-Wno-extern-c-compat",
+        "-Wno-invalid-partial-specialization",
+        "-Wno-sign-compare",
+        "-Wno-unused-local-typedef",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-variable",
+    ],
+}
+
+cc_library_static {
+    name: "libneuralnetworks_common",
+    defaults: [
+        "neuralnetworks_defaults",
+        "neuralnetworks_operations",
+    ],
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.neuralnetworks",
+        "test_com.android.neuralnetworks",
+    ],
+    host_supported: false,
     vendor_available: true,
     // b/109953668, disable OpenMP
     // openmp: true,
@@ -128,7 +163,9 @@ cc_defaults {
         "include",
     ],
     srcs: [
-        "ActivationFunctor.cpp",
+        "AidlBufferTracker.cpp",
+        "AidlHalUtils.cpp",
+        "AidlValidateHal.cpp",
         "BufferTracker.cpp",
         "CpuExecutor.cpp",
         "ExecutionBurstController.cpp",
@@ -140,7 +177,7 @@ cc_defaults {
         "LegacyUtils.cpp",
         "MemoryUtils.cpp",
         "MetaModel.cpp",
-        "ModelUtils.cpp",
+        "OperationsUtils.cpp",
         "QuantUtils.cpp",
         "TokenHasher.cpp",
         "ValidateHal.cpp",
@@ -165,6 +202,7 @@ cc_defaults {
         "operations/Tile.cpp",
     ],
     shared_libs: [
+        "android.hardware.neuralnetworks-V3-ndk",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -177,20 +215,9 @@ cc_defaults {
         "libhidlbase",
         "libhidlmemory",
         "liblog",
+        "libnativewindow",
         "libutils",
     ],
-    target: {
-        android: {
-            shared_libs: ["libnativewindow"],
-        },
-        host: {
-            cflags: [
-                "-D__ANDROID_API__=10000",
-                "-D__INTRODUCED_IN(x)=",
-                "-D__assert(a,b,c)=",
-            ],
-        },
-    },
     header_libs: [
         "gemmlowp_headers",
         "libeigen",
@@ -207,7 +234,9 @@ cc_defaults {
         "neuralnetworks_utils_hal_1_1",
         "neuralnetworks_utils_hal_1_2",
         "neuralnetworks_utils_hal_1_3",
+        "neuralnetworks_utils_hal_aidl",
         "neuralnetworks_utils_hal_common",
+        "neuralnetworks_utils_hal_service",
         "philox_random",
     ],
     static_libs: [
@@ -219,29 +248,17 @@ cc_defaults {
         "-DNAMESPACE_FOR_HASH_FUNCTIONS=farmhash",
         "-DNN_INCLUDE_CPU_IMPLEMENTATION",
         "-DTF_LITE_DISABLE_X86_NEON",
-    ],
-}
-
-cc_library_static {
-    name: "libneuralnetworks_common",
-    defaults: [
-        "libneuralnetworks_common_defaults",
-    ],
-}
-
-cc_library_static {
-    name: "libneuralnetworks_common_experimental",
-    defaults: [
-        "libneuralnetworks_common_defaults",
-    ],
-    exclude_static_libs: [
-        "neuralnetworks_types",
-    ],
-    static_libs: [
-        "neuralnetworks_types_experimental",
-    ],
-    cflags: [
-        "-DNN_EXPERIMENTAL_FEATURE",
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-Wno-array-bounds",
+        "-Wno-extern-c-compat",
+        "-Wno-invalid-partial-specialization",
+        "-Wno-sign-compare",
+        "-Wno-unused-local-typedef",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-variable",
     ],
 }
 
@@ -264,7 +281,6 @@ cc_defaults {
         "neuralnetworks_defaults",
         "neuralnetworks_operations",
     ],
-    host_supported: false,
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
@@ -282,7 +298,7 @@ cc_defaults {
         "IndexedShapeWrapper.cpp",
         "LegacyUtils.cpp",
         "MetaModel.cpp",
-        "ModelUtils.cpp",
+        "OperationsUtils.cpp",
         "TokenHasher.cpp",
     ],
     header_libs: [
@@ -298,6 +314,17 @@ cc_defaults {
     cflags: [
         "-DNAMESPACE_FOR_HASH_FUNCTIONS=farmhash",
         "-DTF_LITE_DISABLE_X86_NEON",
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+        "-Wno-array-bounds",
+        "-Wno-extern-c-compat",
+        "-Wno-invalid-partial-specialization",
+        "-Wno-sign-compare",
+        "-Wno-unused-local-typedef",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-variable",
     ],
 }
 
@@ -309,6 +336,8 @@ cc_library_static {
 cc_library_static {
     name: "libneuralnetworks_common_cl_cpu",
     defaults: ["libneuralnetworks_common_cl_defaults"],
+    sdk_version: "", // Override neuralnetworks_cl_defaults
+    min_sdk_version: "",
     header_libs: [
         "gemmlowp_headers",
         "libeigen",
@@ -318,14 +347,16 @@ cc_library_static {
         "tensorflow_headers",
     ],
     whole_static_libs: [
-        "philox_random_cl",
+        "libarect",
+        "libtflite_kernel_utils",
+        "neuralnetworks_types_cl",
+        "philox_random",
     ],
     static_libs: [
         "libcrypto_static",
         "libtextclassifier_hash_static",
     ],
     srcs: [
-        "ActivationFunctor.cpp",
         "QuantUtils.cpp",
         "operations/ArgMinMax.cpp",
         "operations/BidirectionalSequenceLSTM.cpp",
@@ -352,13 +383,21 @@ cc_library_static {
         "-DNN_COMPATIBILITY_LIBRARY_BUILD",
         "-DNN_INCLUDE_CPU_IMPLEMENTATION",
         "-DTF_LITE_DISABLE_X86_NEON",
+        "-Wno-array-bounds",
+        "-Wno-extern-c-compat",
+        "-Wno-invalid-partial-specialization",
+        "-Wno-sign-compare",
+        "-Wno-unused-local-typedef",
+        "-Wno-unused-parameter",
+        "-Wno-unused-private-field",
+        "-Wno-unused-variable",
     ],
 }
 
 cc_defaults {
     name: "neuralnetworks_utils_defaults",
-    defaults: ["neuralnetworks_defaults"],
-    host_supported: true,
+    // b/146324523, NNAPI host build capability
+    host_supported: false,
     vendor_available: true,
     apex_available: [
         "//apex_available:platform",
@@ -366,33 +405,30 @@ cc_defaults {
         "test_com.android.neuralnetworks",
     ],
     min_sdk_version: "30",
-    target: {
-        host: {
-            cflags: [
-                "-D__ANDROID_API_S__=31",
-                "-D__ANDROID_API__=10000",
-                "-D__INTRODUCED_IN(x)=",
-                "-D__assert(a,b,c)=",
-            ],
-        },
-    },
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+    ],
 }
 
-cc_defaults {
-    name: "neuralnetworks_types_defaults",
+cc_library_static {
+    name: "neuralnetworks_types",
     defaults: ["neuralnetworks_utils_defaults"],
     srcs: [
-        "OperationsUtils.cpp",
         "SharedMemory.cpp",
-        "SharedMemoryAndroid.cpp",
         "TypeUtils.cpp",
         "Types.cpp",
         "Validation.cpp",
-        "operations/*Validation.cpp",
     ],
     target: {
         android: {
+            srcs: ["SharedMemoryAndroid.cpp"],
             shared_libs: [
+                "android.hidl.allocator@1.0",
+                "android.hidl.memory@1.0",
+                "libhidlbase",
+                "libhidlmemory",
                 "libnativewindow",
             ],
             static_libs: ["libarect"],
@@ -413,32 +449,18 @@ cc_defaults {
 }
 
 cc_library_static {
-    name: "neuralnetworks_types",
-    defaults: ["neuralnetworks_types_defaults"],
-}
-
-cc_library_static {
-    name: "neuralnetworks_types_experimental",
-    defaults: ["neuralnetworks_types_defaults"],
-    cflags: ["-DNN_EXPERIMENTAL_FEATURE"],
-}
-
-cc_library_static {
     name: "neuralnetworks_types_cl",
-    host_supported: false,
     defaults: [
         "neuralnetworks_cl_defaults",
         "neuralnetworks_utils_defaults",
     ],
     srcs: [
         "DynamicCLDeps.cpp",
-        "OperationsUtils.cpp",
         "SharedMemory.cpp",
         "SharedMemoryAndroid.cpp",
         "TypeUtils.cpp",
         "Types.cpp",
         "Validation.cpp",
-        "operations/*Validation.cpp",
     ],
     local_include_dirs: ["include/nnapi"],
     export_include_dirs: ["include"],
@@ -455,22 +477,19 @@ cc_library_static {
 
 cc_defaults {
     name: "NeuralNetworksTest_common",
-    defaults: [
-        "neuralnetworks_float16",
-        "neuralnetworks_use_latest_utils_hal_aidl",
-    ],
-    host_supported: true,
+    defaults: ["neuralnetworks_float16"],
     shared_libs: [
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libcutils",
         "libhidlbase",
         "libhidlmemory",
+        "libnativewindow",
         "libneuralnetworks",
         "libneuralnetworks_packageinfo",
         "libutils",
     ],
     static_libs: [
+        "android.hardware.neuralnetworks-V3-ndk",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -480,21 +499,9 @@ cc_defaults {
         "liblog",
         "libneuralnetworks_common",
     ],
-    target: {
-        android: {
-            shared_libs: [
-                "libnativewindow",
-            ],
-        },
-        host: {
-            cflags: [
-                "-D__ANDROID_API_S__=31",
-                "-D__ANDROID_API__=10000",
-                "-D__INTRODUCED_IN(n)=",
-                "-D__assert(a,b,c)=",
-            ],
-        },
-    },
+    cflags: [
+        "-Wno-extern-c-compat",
+    ],
     local_include_dirs: ["include"],
 }
 
@@ -510,6 +517,10 @@ cc_test {
         "philox_random_headers",
         "tensorflow_headers",
     ],
+    cflags: [
+        "-Wno-invalid-partial-specialization",
+        "-Wno-unused-parameter",
+    ],
 }
 
 cc_test {
@@ -522,6 +533,10 @@ cc_test {
         "gemmlowp_headers",
         "libeigen",
         "tensorflow_headers",
+    ],
+    cflags: [
+        "-Wno-unused-parameter",
+        "-Wno-unused-variable",
     ],
     test_suites: [
         "general-tests",

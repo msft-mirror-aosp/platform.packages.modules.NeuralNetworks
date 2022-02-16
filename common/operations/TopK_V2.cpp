@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "TopK_V2.h"
-
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -28,6 +26,15 @@
 namespace android {
 namespace nn {
 namespace topk_v2 {
+
+constexpr uint32_t kNumInputs = 2;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kTopKScalar = 1;
+
+constexpr uint32_t kNumOutputs = 2;
+constexpr uint32_t kOutputValuesTensor = 0;
+constexpr uint32_t kOutputIndicesTensor = 1;
+
 namespace {
 
 template <typename T>
@@ -66,11 +73,30 @@ bool executeTyped(IOperationExecutionContext* context) {
 
 }  // namespace
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+    OperandType inputType = context->getInputType(kInputTensor);
+    NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
+                 inputType == OperandType::TENSOR_FLOAT32 ||
+                 inputType == OperandType::TENSOR_INT32 ||
+                 inputType == OperandType::TENSOR_QUANT8_ASYMM ||
+                 inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
+            << "Unsupported input operand type for select op: " << inputType;
+    NN_RET_CHECK(validateInputTypes(context, {inputType, OperandType::INT32}));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType, OperandType::TENSOR_INT32}));
+    Version minSupportedVersion = Version::ANDROID_Q;
+    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+    }
+    return minSupportedVersion;
+}
+
 bool prepare(IOperationExecutionContext* context) {
     const Shape inputShape = context->getInputShape(kInputTensor);
     const int32_t k = context->getInputValue<int32_t>(kTopKScalar);
     NN_RET_CHECK_GT(k, 0);
-    NN_RET_CHECK_LE(static_cast<uint32_t>(k), inputShape.dimensions.back());
+    NN_RET_CHECK_LE(k, inputShape.dimensions.back());
 
     // Copy input shape to ensure that quantization parameters for the output
     // values are the same as for the input tensor.

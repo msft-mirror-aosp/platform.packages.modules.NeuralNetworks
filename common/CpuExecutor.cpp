@@ -269,7 +269,7 @@ bool OperationExecutionContext::checkNoZeroSizedInput() const {
     for (uint32_t i = 0; i < operation->inputs.size(); i++) {
         if (isOmittedInput(i)) continue;
         for (uint32_t j = 0; j < getInputInfo(i)->dimensions.size(); j++) {
-            NN_RET_CHECK_NE(getInputInfo(i)->dimensions[j], 0u)
+            NN_RET_CHECK_NE(getInputInfo(i)->dimensions[j], 0)
                     << operation->type << " does not support zero-sized tensor, but input " << i
                     << " dimension " << j << " is 0.";
         }
@@ -715,8 +715,7 @@ void CpuExecutor::updateForArguments(const std::vector<uint32_t>& indexes,
     }
 }
 
-int CpuExecutor::executeOperation([[maybe_unused]] const Operation& operation,
-                                  [[maybe_unused]] RunTimeOperandInfo* operands) {
+int CpuExecutor::executeOperation(const Operation& operation, RunTimeOperandInfo* operands) {
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
     if (hasDeadlinePassed(mDeadline)) {
         return ANEURALNETWORKS_MISSED_DEADLINE_TRANSIENT;
@@ -1375,7 +1374,7 @@ int CpuExecutor::executeOperation([[maybe_unused]] const Operation& operation,
             const int32_t axis = getScalarData<int32_t>(operands[ins[1]]);
             const int32_t numOutputs = getScalarData<int32_t>(operands[ins[2]]);
 
-            if (static_cast<size_t>(numOutputs) != outs.size()) {
+            if (numOutputs != outs.size()) {
                 return ANEURALNETWORKS_BAD_DATA;
             }
 

@@ -16,8 +16,8 @@
 
 // Provides C++ classes to more easily use the Neural Networks API.
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
+#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
 
 #include <assert.h>
 #include <math.h>
@@ -176,7 +176,7 @@ struct OperandType {
 };
 
 #ifdef NNTEST_SLTS
-#define NNAPI_CALL(apiCall) mNnApi->getFL5()->apiCall
+#define NNAPI_CALL(apiCall) mNnApi->apiCall
 #else
 #define NNAPI_CALL(apiCall) apiCall
 #endif
@@ -197,16 +197,14 @@ class Memory {
                          size, protect, fd, offset, &mMemory)) == ANEURALNETWORKS_NO_ERROR;
     }
 
-#ifdef __ANDROID__
 #ifdef NNTEST_SLTS
     Memory(const NnApiSupportLibrary* nnapi, AHardwareBuffer* buffer) : mNnApi(nnapi) {
-#else   // NNTEST_SLTS
+#else
     Memory(AHardwareBuffer* buffer) {
-#endif  // NNTEST_SLTS
+#endif
         mValid = NNAPI_CALL(ANeuralNetworksMemory_createFromAHardwareBuffer(buffer, &mMemory)) ==
                  ANEURALNETWORKS_NO_ERROR;
     }
-#endif  // __ANDROID__
 
     ~Memory() {
         if (mMemory) {
@@ -327,17 +325,6 @@ class Model {
                                    size_t length) {
         if (NNAPI_CALL(ANeuralNetworksModel_setOperandValueFromMemory(
                     mModel, index, memory->get(), offset, length)) != ANEURALNETWORKS_NO_ERROR) {
-            mValid = false;
-        }
-    }
-
-    void setOperandValueFromModel(uint32_t index, const Model* model) {
-        if (__builtin_available(android /* Android R / FL4 */ 30, *)) {
-            if (NNAPI_CALL(ANeuralNetworksModel_setOperandValueFromModel(
-                        mModel, index, model->getHandle())) != ANEURALNETWORKS_NO_ERROR) {
-                mValid = false;
-            }
-        } else {
             mValid = false;
         }
     }
@@ -473,7 +460,7 @@ class Compilation {
             const std::vector<const ANeuralNetworksDevice*>& devices) {
         ANeuralNetworksCompilation* compilation = nullptr;
         const Result result =
-                static_cast<Result>(nnapi->getFL5()->ANeuralNetworksCompilation_createForDevices(
+                static_cast<Result>(nnapi->ANeuralNetworksCompilation_createForDevices(
                         model->getHandle(), devices.empty() ? nullptr : devices.data(),
                         devices.size(), &compilation));
         return {result, Compilation(nnapi, compilation)};
@@ -722,4 +709,4 @@ class Execution {
 }  // namespace nn
 }  // namespace android
 
-#endif  //  ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
+#endif  //  ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_WRAPPER_H
