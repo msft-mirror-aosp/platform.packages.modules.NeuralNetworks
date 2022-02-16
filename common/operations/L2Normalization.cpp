@@ -16,8 +16,6 @@
 
 #define LOG_TAG "Operations"
 
-#include "L2Normalization.h"
-
 #include <algorithm>
 #include <vector>
 
@@ -25,13 +23,8 @@
 #include "Tracing.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wsign-compare"
-#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/l2normalization.h>
-#pragma clang diagnostic pop
 
 #include "CpuOperationUtils.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
@@ -40,11 +33,20 @@ namespace android {
 namespace nn {
 namespace l2_norm {
 
+constexpr char kOperationName[] = "L2_NORMALIZATION";
+
+constexpr uint32_t kNumInputs = 2;
+constexpr uint32_t kInputTensor = 0;
+constexpr uint32_t kAxisScalar = 1;
+
+constexpr uint32_t kNumOutputs = 1;
+constexpr uint32_t kOutputTensor = 0;
+
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 inline bool l2normFloat32Impl(const float* inputData, const Shape& inputShape, int32_t axis,
-                              float* outputData, const Shape& /*outputShape*/) {
+                              float* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("l2normFloat32");
     constexpr float kEpsilon = 1e-6f;
     const uint32_t outerSize = getNumberOfElements(inputShape, 0, axis);
@@ -72,7 +74,7 @@ inline bool l2normFloat32Impl(const float* inputData, const Shape& inputShape, i
 }
 
 inline bool l2normQuant8Impl(const uint8_t* inputData, const Shape& inputShape, int32_t axis,
-                             uint8_t* outputData, const Shape& /*outputShape*/) {
+                             uint8_t* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("l2normQuant8");
     const uint32_t outerSize = getNumberOfElements(inputShape, 0, axis);
     const uint32_t axisSize = getSizeOfDimension(inputShape, axis);
@@ -104,7 +106,7 @@ inline bool l2normQuant8Impl(const uint8_t* inputData, const Shape& inputShape, 
 }
 
 inline bool l2normQuant8SignedImpl(const int8_t* inputData, const Shape& inputShape, int32_t axis,
-                                   int8_t* outputData, const Shape& /*outputShape*/) {
+                                   int8_t* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("l2normQuant8Signed");
     const uint32_t outerSize = getNumberOfElements(inputShape, 0, axis);
     const uint32_t axisSize = getSizeOfDimension(inputShape, axis);
@@ -197,7 +199,41 @@ bool l2normQuant8Signed(const int8_t* inputData, const Shape& inputShape, int32_
 }
 
 }  // namespace
+#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
+Result<Version> validate(const IOperationValidationContext* context) {
+    NN_RET_CHECK(context->getNumInputs() == kNumInputs ||
+                 context->getNumInputs() == kNumInputs - 1);
+    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
+
+    const OperandType inputType = context->getInputType(kInputTensor);
+    std::vector<OperandType> inExpectedTypes = {inputType};
+    auto minSupportedVersion = Version::ANDROID_OC_MR1;
+    if (inputType == OperandType::TENSOR_FLOAT16 || inputType == OperandType::TENSOR_QUANT8_ASYMM) {
+        minSupportedVersion = Version::ANDROID_Q;
+    } else if (inputType == OperandType::TENSOR_FLOAT32) {
+        minSupportedVersion = Version::ANDROID_OC_MR1;
+    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+        minSupportedVersion = Version::ANDROID_R;
+    } else {
+        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
+    }
+    if (context->getNumInputs() == kNumInputs) {
+        inExpectedTypes.push_back(OperandType::INT32);
+        minSupportedVersion = Version::ANDROID_Q;
+    } else if (context->getInputShape(kInputTensor).dimensions.size() != 4) {
+        minSupportedVersion = Version::ANDROID_Q;
+    }
+    const Shape& input = context->getInputShape(kInputTensor);
+    if (hasKnownRank(input)) {
+        NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
+    }
+    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
+    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
+    return minSupportedVersion;
+}
+
+#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     const Shape& input = context->getInputShape(kInputTensor);
     int32_t numDimensions = getNumberOfDimensions(input);

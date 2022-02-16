@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_VALIDATION_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_VALIDATION_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_VALIDATION_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_VALIDATION_H
 
 #include <memory>
 #include <set>
@@ -29,18 +29,7 @@ namespace android::nn {
 
 // Utility functions
 
-// Takes two minimum versions needed for two features and returns a the minimum version that must be
-// supported in order to support both features.
-Version combineVersions(Version minVersionNeeded1, Version minVersionNeeded2);
-
-// Indicates whether a feature at version `minVersionNeeded` is supported on version
-// `maxVersionSupported`. For example:
-// * a feature at kVersionFeatureLevel2 is supported on a driver at kVersionFeatureLevel3.
-// * a feature at kVersionFeatureLevel3 is supported on a driver at kVersionFeatureLevel3.
-// * a feature at kVersionFeatureLevel5 is not supported on a driver at kVersionFeatureLevel3.
-// * a feature that is runtime only (i.e., invalid with respect to the HAL specification) is not
-//   supported on a driver that does not support runtime-only features.
-bool isCompliantVersion(Version minVersionNeeded, Version maxVersionSupported);
+Version combineVersions(Version lhs, Version rhs);
 
 Result<Version> validate(const DeviceStatus& deviceStatus);
 Result<Version> validate(const ExecutionPreference& executionPreference);
@@ -64,19 +53,14 @@ Result<Version> validate(const OptionalTimePoint& optionalTimePoint);
 Result<Version> validate(const OptionalDuration& optionalTimeoutDuration);
 Result<Version> validate(const CacheToken& cacheToken);
 Result<Version> validate(const SyncFence& syncFence);
-Result<Version> validate(const TokenValuePair& tokenValuePair);
 
 Result<Version> validate(const std::vector<OutputShape>& outputShapes);
 Result<Version> validate(const std::vector<Extension>& extensions);
 Result<Version> validate(const std::vector<SharedHandle>& handles);
 Result<Version> validate(const std::vector<BufferRole>& bufferRoles);
 Result<Version> validate(const std::vector<SyncFence>& syncFences);
-Result<Version> validate(const std::vector<TokenValuePair>& metaData);
-Result<Version> validate(const std::vector<ExtensionNameAndPrefix>& extensionNamesAndPrefixes);
 
 // Validate request applied to model.
-// This function assumes that `model` has already been validated, and the returned Version does not
-// account for the version the model.
 Result<Version> validateRequestForModel(const Request& request, const Model& model,
                                         bool allowUnspecifiedOutput = true);
 
@@ -147,4 +131,4 @@ Result<Version> validateOperandAndAnythingItDependsOn(const Operand& operand,
 
 }  // namespace android::nn
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_VALIDATION_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_VALIDATION_H

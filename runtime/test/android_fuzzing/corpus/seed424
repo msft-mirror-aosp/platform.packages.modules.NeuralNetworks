@@ -1,87 +1,60 @@
 model {
-  main {
-    operands {
-      operand {
-        type: TENSOR_QUANT8_ASYMM
-        dimensions {
-          dimension: 144
-        }
-        scale: 1
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 3046290712
-        }
+  operands {
+    operand {
+      type: TENSOR_QUANT8_SYMM
+      dimensions {
+        dimension: 2
+        dimension: 2
+        dimension: 2
       }
-      operand {
-        type: TENSOR_QUANT8_ASYMM
-        dimensions {
-          dimension: 144
+      scale: 0.5
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
         }
-        scale: 10
-        zero_point: 120
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 1095968103
-        }
+        channel_dim: 0
       }
-      operand {
-        type: INT32
-        dimensions {
-        }
-        lifetime: CONSTANT_COPY
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 0
-        }
-      }
-      operand {
-        type: TENSOR_QUANT8_ASYMM
-        dimensions {
-          dimension: 144
-        }
-        scale: 1
-        lifetime: SUBGRAPH_OUTPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 3568855301
-        }
+      data {
+        random_seed: 1958053309
       }
     }
-    operations {
-      operation {
-        type: SUB
-        inputs {
-          index: 0
-          index: 1
-          index: 2
-        }
-        outputs {
-          index: 3
-        }
+    operand {
+      type: TENSOR_FLOAT32
+      dimensions {
+        dimension: 2
+        dimension: 2
+        dimension: 2
       }
-    }
-    input_indexes {
-      index: 0
-      index: 1
-    }
-    output_indexes {
-      index: 3
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_OUTPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 3186970276
+      }
     }
   }
-  referenced {
+  operations {
+    operation {
+      type: DEQUANTIZE
+      inputs {
+        index: 0
+      }
+      outputs {
+        index: 1
+      }
+    }
   }
+  input_indexes {
+    index: 0
+  }
+  output_indexes {
+    index: 1
+  }
+  is_relaxed: true
 }
