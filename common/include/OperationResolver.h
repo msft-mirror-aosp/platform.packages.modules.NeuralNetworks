@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATION_RESOLVER_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATION_RESOLVER_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATION_RESOLVER_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATION_RESOLVER_H
 
 #include <utility>
 
@@ -30,8 +30,6 @@ struct OperationRegistration {
     const char* name;
 
     // Validates operand types, shapes, and any values known during graph creation.
-    // TODO(b/213938830): operation validation dispatch is duplicated and does not handle extension
-    // types.
     std::function<Result<Version>(const IOperationValidationContext*)> validate;
 
     // prepare is called when the inputs this operation depends on have been
@@ -95,27 +93,12 @@ class BuiltinOperationResolver : public IOperationResolver {
     // The number of operation types (OperationCode) defined in NeuralNetworksTypes.h.
     static constexpr int kNumberOfOperationTypes = 106;
 
-#ifdef NN_EXPERIMENTAL_FEATURE
-    // The number of experimental operation types (ANeuralNetworksExperimentalOperationCode) defined
-    // in NeuralNetworksExperimentalFeatures.h.
-    static constexpr int kNumberOfExperimentalOperationTypes = 1;
-
-    // The starting value of experimental operation types (ANeuralNetworksExperimentalOperationCode)
-    // defined in NeuralNetworksExperimentalFeatures.h.
-    static constexpr int kStartOfExperimentalOperations = 20000;
-#endif  // NN_EXPERIMENTAL_FEATURE
-
    private:
     BuiltinOperationResolver();
 
     void registerOperation(const OperationRegistration* operationRegistration);
 
     const OperationRegistration* mRegistrations[kNumberOfOperationTypes] = {};
-
-#ifdef NN_EXPERIMENTAL_FEATURE
-    const OperationRegistration* mExperimentalRegistrations[kNumberOfExperimentalOperationTypes] =
-            {};
-#endif  // NN_EXPERIMENTAL_FEATURE
 };
 
 // NN_REGISTER_OPERATION creates OperationRegistration for consumption by
@@ -147,7 +130,7 @@ class BuiltinOperationResolver : public IOperationResolver {
 #else
 // This version ignores CPU execution logic (prepare and execute).
 // The compiler is supposed to omit that code so that only validation logic
-// makes it into libneuralnetworks_common*.
+// makes it into libneuralnetworks_utils.
 #define NN_REGISTER_OPERATION(identifier, operationName, validate, unused_prepare, unused_execute, \
                               ...)                                                                 \
     const OperationRegistration* register_##identifier() {                                         \
@@ -157,10 +140,7 @@ class BuiltinOperationResolver : public IOperationResolver {
     }
 #endif
 
-#define NN_OPERATION_IS_NOT_IMPLEMENTED(identifier) \
-    const OperationRegistration* register_##identifier() { return nullptr; }
-
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATION_RESOLVER_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATION_RESOLVER_H
