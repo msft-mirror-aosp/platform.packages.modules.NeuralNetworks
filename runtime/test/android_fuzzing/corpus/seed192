@@ -1,72 +1,56 @@
 model {
-  main {
-    operands {
-      operand {
-        type: TENSOR_QUANT8_ASYMM_SIGNED
-        dimensions {
-          dimension: 1
-          dimension: 4
-        }
-        scale: 0.5
-        zero_point: -128
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 2492105345
-        }
+  operands {
+    operand {
+      type: TENSOR_QUANT8_ASYMM
+      dimensions {
+        dimension: 10
       }
-      operand {
-        dimensions {
+      scale: 0.5
+      zero_point: 127
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
         }
-        lifetime: CONSTANT_COPY
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 925353388
-        }
+        channel_dim: 0
       }
-      operand {
-        type: TENSOR_QUANT8_ASYMM_SIGNED
-        dimensions {
-          dimension: 1
-          dimension: 4
-        }
-        scale: 0.00390625
-        zero_point: -128
-        lifetime: SUBGRAPH_OUTPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 3233857728
-        }
+      data {
+        random_seed: 4109530780
       }
     }
-    operations {
-      operation {
-        type: SOFTMAX
-        inputs {
-          index: 0
-          index: 1
-        }
-        outputs {
-          index: 2
-        }
+    operand {
+      type: TENSOR_FLOAT16
+      dimensions {
+        dimension: 10
       }
-    }
-    input_indexes {
-      index: 0
-    }
-    output_indexes {
-      index: 2
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_OUTPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 3929983814
+      }
     }
   }
-  referenced {
+  operations {
+    operation {
+      type: DEQUANTIZE
+      inputs {
+        index: 0
+      }
+      outputs {
+        index: 1
+      }
+    }
   }
+  input_indexes {
+    index: 0
+  }
+  output_indexes {
+    index: 1
+  }
+  is_relaxed: false
 }
