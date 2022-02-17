@@ -16,6 +16,8 @@
 
 #define LOG_TAG "Operations"
 
+#include "RoiPooling.h"
+
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -33,28 +35,13 @@ namespace android {
 namespace nn {
 namespace roi_pooling {
 
-constexpr char kOperationName[] = "ROI_POOLING";
-
-constexpr uint32_t kNumInputs = 8;
-constexpr uint32_t kInputTensor = 0;
-constexpr uint32_t kRoiTensor = 1;
-constexpr uint32_t kBatchSplitTensor = 2;
-constexpr uint32_t kOutputHeightScalar = 3;
-constexpr uint32_t kOutputWidthScalar = 4;
-constexpr uint32_t kHeightStrideSalar = 5;
-constexpr uint32_t kWidthStrideScalar = 6;
-constexpr uint32_t kLayoutScalar = 7;
-
-constexpr uint32_t kNumOutputs = 1;
-constexpr uint32_t kOutputTensor = 0;
-
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 template <typename T_Input, typename T_Roi>
 inline bool roiPoolingNhwc(const T_Input* inputData, const Shape& inputShape, const T_Roi* roiData,
                            const Shape& roiShape, const int32_t* batchSplitData,
-                           const Shape& batchSplitShape, float heightStride, float widthStride,
+                           const Shape& /*batchSplitShape*/, float heightStride, float widthStride,
                            T_Input* outputData, const Shape& outputShape) {
     NNTRACE_TRANS("RoiPooling");
 
@@ -80,7 +67,7 @@ inline bool roiPoolingNhwc(const T_Input* inputData, const Shape& inputShape, co
         // 1. invalid batch id
         // 2. Region out of bound: x1|x2|y1|y2 < 0 || x1|x2 > inWidth || y1|y2 > inHeight
         // 3. Invalid region: x2 < x1 || y2 < y1
-        NN_RET_CHECK_GE(batchId, 0);
+        NN_RET_CHECK_GE(batchId, 0u);
         NN_RET_CHECK_LT(batchId, numBatches);
         NN_RET_CHECK(roiInfo[0] >= 0);
         NN_RET_CHECK(roiInfo[1] >= 0);
@@ -187,60 +174,21 @@ inline bool roiPooling<int8_t, uint16_t>(const int8_t* inputData, const Shape& i
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
-    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
-    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
-    std::vector<OperandType> inExpectedTypes;
-    auto inputType = context->getInputType(kInputTensor);
-    if (inputType == OperandType::TENSOR_FLOAT32) {
-        inExpectedTypes = {OperandType::TENSOR_FLOAT32, OperandType::TENSOR_FLOAT32,
-                           OperandType::TENSOR_INT32,   OperandType::INT32,
-                           OperandType::INT32,          OperandType::FLOAT32,
-                           OperandType::FLOAT32,        OperandType::BOOL};
-    } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        inExpectedTypes = {OperandType::TENSOR_FLOAT16, OperandType::TENSOR_FLOAT16,
-                           OperandType::TENSOR_INT32,   OperandType::INT32,
-                           OperandType::INT32,          OperandType::FLOAT16,
-                           OperandType::FLOAT16,        OperandType::BOOL};
-    } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM ||
-               inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        inExpectedTypes = {inputType,
-                           OperandType::TENSOR_QUANT16_ASYMM,
-                           OperandType::TENSOR_INT32,
-                           OperandType::INT32,
-                           OperandType::INT32,
-                           OperandType::FLOAT32,
-                           OperandType::FLOAT32,
-                           OperandType::BOOL};
-    } else {
-        return NN_ERROR() << "Unsupported input tensor type for operation " << kOperationName;
-    }
-    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
-    } else {
-        return Version::ANDROID_Q;
-    }
-}
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     bool useNchw = context->getInputValue<bool>(kLayoutScalar);
     Shape input = context->getInputShape(kInputTensor);
     Shape roiShape = context->getInputShape(kRoiTensor);
     Shape batchSplitShape = context->getInputShape(kBatchSplitTensor);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4);
-    NN_RET_CHECK_EQ(getNumberOfDimensions(roiShape), 2);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4u);
+    NN_RET_CHECK_EQ(getNumberOfDimensions(roiShape), 2u);
 
-    uint32_t numBatches = getSizeOfDimension(input, 0);
-    uint32_t inHeight = getSizeOfDimension(input, useNchw ? 2 : 1);
-    uint32_t inWidth = getSizeOfDimension(input, useNchw ? 3 : 2);
+    [[maybe_unused]] uint32_t numBatches = getSizeOfDimension(input, 0);
+    [[maybe_unused]] uint32_t inHeight = getSizeOfDimension(input, useNchw ? 2 : 1);
+    [[maybe_unused]] uint32_t inWidth = getSizeOfDimension(input, useNchw ? 3 : 2);
     uint32_t inDepth = getSizeOfDimension(input, useNchw ? 1 : 3);
     uint32_t numRois = getSizeOfDimension(roiShape, 0);
-    NN_RET_CHECK_EQ(getSizeOfDimension(roiShape, 1), 4);
+    NN_RET_CHECK_EQ(getSizeOfDimension(roiShape, 1), 4u);
     NN_RET_CHECK_EQ(getSizeOfDimension(batchSplitShape, 0), numRois);
 
     auto outputHeight = context->getInputValue<int32_t>(kOutputHeightScalar);
