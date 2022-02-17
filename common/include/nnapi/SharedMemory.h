@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_SHARED_MEMORY_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_SHARED_MEMORY_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_SHARED_MEMORY_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_SHARED_MEMORY_H
 
 #include <android-base/unique_fd.h>
 
@@ -23,6 +23,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -87,8 +88,10 @@ GeneralResult<SharedMemory> createSharedMemory(size_t size);
 // Precondition: size > 0
 GeneralResult<SharedMemory> createSharedMemoryFromFd(size_t size, int prot, int fd, size_t offset);
 
+#ifdef __ANDROID__
 // Precondition: ahwb != nullptr
 GeneralResult<SharedMemory> createSharedMemoryFromAHWB(AHardwareBuffer* ahwb, bool takeOwnership);
+#endif  // __ANDROID__
 
 // Precondition: memory != nullptr
 size_t getSize(const SharedMemory& memory);
@@ -108,6 +111,82 @@ GeneralResult<Mapping> map(const SharedMemory& memory);
 
 bool flush(const Mapping& mapping);
 
+// Indicates if the object contains no pointer-based data that could be relocated to shared memory.
+bool hasNoPointerData(const Model& model);
+bool hasNoPointerData(const Request& request);
+
+// Relocate pointer-based data to shared memory. If `model` has no Operand::LifeTime::POINTER data,
+// the function returns with a reference to `model`. If `model` has Operand::LifeTime::POINTER data,
+// the model is copied to `maybeModelInSharedOut` with the POINTER data relocated to a memory pool,
+// and the function returns with a reference to `*maybeModelInSharedOut`.
+GeneralResult<std::reference_wrapper<const Model>> flushDataFromPointerToShared(
+        const Model* model, std::optional<Model>* maybeModelInSharedOut);
+
+// Record a relocation mapping between pointer-based data and shared memory.
+// Only two specializations of this template may exist:
+// - RelocationInfo<const void*> for request inputs
+// - RelocationInfo<void*> for request outputs
+template <typename PointerType>
+struct RelocationInfo {
+    PointerType data;
+    size_t length;
+    size_t offset;
+};
+using InputRelocationInfo = RelocationInfo<const void*>;
+using OutputRelocationInfo = RelocationInfo<void*>;
+
+// Keep track of the relocation mapping between pointer-based data and shared memory pool,
+// and provide method to copy the data between pointers and the shared memory pool.
+// Only two specializations of this template may exist:
+// - RelocationTracker<InputRelocationInfo> for request inputs
+// - RelocationTracker<OutputRelocationInfo> for request outputs
+template <typename RelocationInfoType>
+class RelocationTracker {
+   public:
+    static GeneralResult<std::unique_ptr<RelocationTracker>> create(
+            std::vector<RelocationInfoType> relocationInfos, SharedMemory memory) {
+        auto mapping = NN_TRY(map(memory));
+        return std::make_unique<RelocationTracker<RelocationInfoType>>(
+                std::move(relocationInfos), std::move(memory), std::move(mapping));
+    }
+
+    RelocationTracker(std::vector<RelocationInfoType> relocationInfos, SharedMemory memory,
+                      Mapping mapping)
+        : kRelocationInfos(std::move(relocationInfos)),
+          kMemory(std::move(memory)),
+          kMapping(std::move(mapping)) {}
+
+    // Specializations defined in CommonUtils.cpp.
+    // For InputRelocationTracker, this method will copy pointer data to the shared memory pool.
+    // For OutputRelocationTracker, this method will copy shared memory data to the pointers.
+    void flush() const;
+
+   private:
+    const std::vector<RelocationInfoType> kRelocationInfos;
+    const SharedMemory kMemory;
+    const Mapping kMapping;
+};
+using InputRelocationTracker = RelocationTracker<InputRelocationInfo>;
+using OutputRelocationTracker = RelocationTracker<OutputRelocationInfo>;
+
+struct RequestRelocation {
+    std::unique_ptr<InputRelocationTracker> input;
+    std::unique_ptr<OutputRelocationTracker> output;
+};
+
+// Relocate pointer-based data to shared memory. If `request` has no
+// Request::Argument::LifeTime::POINTER data, the function returns with a reference to `request`. If
+// `request` has Request::Argument::LifeTime::POINTER data, the request is copied to
+// `maybeRequestInSharedOut` with the POINTER data relocated to a memory pool, and the function
+// returns with a reference to `*maybeRequestInSharedOut`. The `relocationOut` will be set to track
+// the input and output relocations.
+//
+// Unlike `flushDataFromPointerToShared`, this method will not copy the input pointer data to the
+// shared memory pool. Use `relocationOut` to flush the input or output data after the call.
+GeneralResult<std::reference_wrapper<const Request>> convertRequestFromPointerToShared(
+        const Request* request, uint32_t alignment, uint32_t padding,
+        std::optional<Request>* maybeRequestInSharedOut, RequestRelocation* relocationOut);
+
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_SHARED_MEMORY_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_SHARED_MEMORY_H

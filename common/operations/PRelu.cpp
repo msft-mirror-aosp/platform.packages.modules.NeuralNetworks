@@ -16,6 +16,8 @@
 
 #define LOG_TAG "Operations"
 
+#include "PRelu.h"
+
 #include <algorithm>
 #include <vector>
 
@@ -25,21 +27,17 @@
 #include "Tracing.h"
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wsign-compare"
+#pragma clang diagnostic ignored "-Winvalid-partial-specialization"
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
+#pragma clang diagnostic pop
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
 namespace nn {
 namespace prelu {
-
-constexpr char kOperationName[] = "PRELU";
-
-constexpr uint32_t kNumInputs = 2;
-constexpr uint32_t kInputTensor = 0;
-constexpr uint32_t kAlphaTensor = 1;
-
-constexpr uint32_t kNumOutputs = 1;
-constexpr uint32_t kOutputTensor = 0;
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 template <typename T>
@@ -97,27 +95,7 @@ bool evalQuant8(const T* aData, const Shape& aShape, const T* bData, const Shape
             },
             aData, aShape, bData, bShape, outputData, outputShape);
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
-    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
-    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
-    auto inputType = context->getInputType(kInputTensor);
-    NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
-                 inputType == OperandType::TENSOR_FLOAT32 ||
-                 inputType == OperandType::TENSOR_QUANT8_ASYMM ||
-                 inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
-            << "Unsupported tensor type for operation " << kOperationName;
-    NN_RET_CHECK(validateInputTypes(context, {inputType, inputType}));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
-    } else {
-        return Version::ANDROID_Q;
-    }
-}
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     Shape alpha = context->getInputShape(kAlphaTensor);
