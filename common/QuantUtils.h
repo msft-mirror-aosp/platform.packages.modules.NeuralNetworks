@@ -2,10 +2,13 @@
 // TODO(vddang): Replace this with tensorflow/lite/kernels/internal/tensor_utils(common).h
 // after TFLite module has been synced.
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_QUANTUTILS_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_QUANTUTILS_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_QUANTUTILS_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_QUANTUTILS_H
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wsign-compare"
 #include <public/gemmlowp.h>
+#pragma clang diagnostic pop
 
 #include <limits>
 #include <memory>
@@ -209,4 +212,4 @@ void VectorBatchVectorCwiseProductAccumulate(const int16_t* vector, int v_size,
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_QUANTUTILS_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_QUANTUTILS_H

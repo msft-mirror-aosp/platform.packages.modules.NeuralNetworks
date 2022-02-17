@@ -18,6 +18,8 @@
 
 #define LOG_TAG "Operations"
 
+#include "Squeeze.h"
+
 #include <vector>
 
 #include "OperationResolver.h"
@@ -27,44 +29,6 @@
 namespace android {
 namespace nn {
 namespace squeeze {
-
-constexpr uint32_t kNumInputs = 2;
-constexpr uint32_t kInputTensor = 0;
-constexpr uint32_t kSqueezeDims = 1;
-
-constexpr uint32_t kNumOutputs = 1;
-constexpr uint32_t kOutputTensor = 0;
-
-Result<Version> validate(const IOperationValidationContext* context) {
-    NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
-    NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
-    OperandType inputType = context->getInputType(kInputTensor);
-    NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
-                 inputType == OperandType::TENSOR_FLOAT32 ||
-                 inputType == OperandType::TENSOR_QUANT8_ASYMM ||
-                 inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
-            << "Unsupported input operand type for SQUEEZE op: " << inputType;
-
-    Version minSupportedVersion;
-    if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
-    } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
-    } else {
-        minSupportedVersion = Version::ANDROID_P;
-    }
-
-    NN_RET_CHECK(validateInputTypes(context, {
-                                                     inputType,
-                                                     OperandType::TENSOR_INT32,
-                                             }));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    const Shape& input = context->getInputShape(kInputTensor);
-    if (hasKnownRank(input)) {
-        NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
-    }
-    return minSupportedVersion;
-}
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
@@ -77,7 +41,7 @@ bool prepare(IOperationExecutionContext* context) {
     const Shape squeezeDimsShape = context->getInputShape(kSqueezeDims);
     int32_t numInputDims = static_cast<int32_t>(getNumberOfDimensions(inputShape));
 
-    NN_RET_CHECK_LE(getNumberOfDimensions(inputShape), 4);
+    NN_RET_CHECK_LE(getNumberOfDimensions(inputShape), 4u);
 
     // squeezeDims need to be provided as a 1-D int32 tensor.
     NN_OPS_CHECK(squeezeDimsShape.type == OperandType::TENSOR_INT32);
