@@ -16,6 +16,8 @@
 
 #define LOG_TAG "Operations"
 
+#include "Split.h"
+
 #include <vector>
 
 #include "Operations.h"
@@ -42,7 +44,7 @@ bool splitGeneric(const Scalar* inputData, const Shape& inputShape, int32_t axis
 
     const Scalar* inputPtr = inputData;
     for (int k = 0; k < outerSize; k++) {
-        for (int i = 0; i < outputDataPtrs->size(); ++i) {
+        for (size_t i = 0; i < outputDataPtrs->size(); ++i) {
             const int copySize = outputShapes[i].dimensions[axis] * baseInnerSize;
             memcpy(outputDataPtrs->at(i) + k * copySize, inputPtr, copySize * sizeof(Scalar));
             inputPtr += copySize;
