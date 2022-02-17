@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_OPERAND_TYPES_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_OPERAND_TYPES_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_OPERAND_TYPES_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_OPERAND_TYPES_H
 
 namespace android::nn {
 
@@ -109,7 +109,7 @@ enum class OperandType {
      * - scales: an array of positive 32 bit floating point values.
      * The size of the scales array must be equal to dimensions[channelDim].
      *
-     *{@link SymmPerChannelQuantParams} must hold the parameters for an Operand of this type.
+     * {@link SymmPerChannelQuantParams} must hold the parameters for an Operand of this type.
      * The channel dimension of this tensor must not be unknown (dimensions[channelDim] != 0).
      *
      * The formula is:
@@ -182,4 +182,4 @@ enum class OperandType {
 
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_OPERAND_TYPES_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_OPERAND_TYPES_H
