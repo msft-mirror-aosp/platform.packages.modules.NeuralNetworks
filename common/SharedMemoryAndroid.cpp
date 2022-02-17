@@ -19,7 +19,10 @@
 #include <android-base/logging.h>
 #include <android-base/mapped_file.h>
 #include <android-base/scopeguard.h>
+
+#ifdef __ANDROID__
 #include <android/hardware_buffer.h>
+#endif  // __ANDROID__
 
 #include <algorithm>
 #include <any>
@@ -37,10 +40,7 @@
 #include "Types.h"
 
 #ifndef NN_COMPATIBILITY_LIBRARY_BUILD
-#include <android/hidl/allocator/1.0/IAllocator.h>
-#include <hidl/HidlSupport.h>
-#include <hidlmemory/mapping.h>
-#include <sys/mman.h>
+#include <cutils/ashmem.h>
 #else
 #include "DynamicCLDeps.h"
 #endif  // NN_COMPATIBILITY_LIBRARY_BUILD
@@ -61,87 +61,42 @@ GeneralResult<SharedMemory> createSharedMemoryFromUniqueFd(size_t size, int prot
 
 #ifndef NN_COMPATIBILITY_LIBRARY_BUILD
 
-using ::android::hardware::hidl_memory;
-using ::android::hidl::allocator::V1_0::IAllocator;
-
-const char* const kAllocatorService = "ashmem";
-
-GeneralResult<hardware::hidl_handle> hidlHandleFromUniqueFd(base::unique_fd fd) {
-    native_handle_t* nativeHandle = native_handle_create(1, 0);
-    if (nativeHandle == nullptr) {
-        return NN_ERROR() << "Failed to create native_handle";
-    }
-    nativeHandle->data[0] = fd.release();
-
-    hardware::hidl_handle hidlHandle;
-    hidlHandle.setTo(nativeHandle, /*shouldOwn=*/true);
-    return hidlHandle;
-}
-
 GeneralResult<SharedMemory> allocateSharedMemory(size_t size) {
-    static const auto allocator = IAllocator::getService(kAllocatorService);
     CHECK_GT(size, 0u);
 
-    hidl_memory maybeMemory;
-    auto fn = [&maybeMemory](bool success, const hidl_memory& memory) {
-        if (success) {
-            maybeMemory = memory;
-        }
-    };
-    allocator->allocate(size, fn);
-
-    if (!maybeMemory.valid()) {
-        return NN_ERROR(ErrorStatus::GENERAL_FAILURE)
-               << "IAllocator::allocate returned an invalid (empty) memory object";
-    }
-    if (maybeMemory.handle()->numFds != 1) {
-        return NN_ERROR() << "IAllocator::allocate returned an invalid memory object with "
-                          << maybeMemory.handle()->numFds << " numFds, but expected 1";
-    }
-    if (maybeMemory.handle()->numInts != 0) {
-        return NN_ERROR() << "IAllocator::allocate returned an invalid memory object with "
-                          << maybeMemory.handle()->numInts << " numInts, but expected 0";
+    auto fd = base::unique_fd(ashmem_create_region("nnapi_ashmem", size));
+    if (!fd.ok()) {
+        return NN_ERROR() << "ashmem_create_region failed";
     }
 
-    CHECK_LE(maybeMemory.size(), std::numeric_limits<size_t>::max());
-    const int fd = maybeMemory.handle()->data[0];
+    // TODO(b/205348471): verify size with ashmem_get_size_region
 
     auto handle = Memory::Ashmem{
-            .fd = NN_TRY(dupFd(fd)),
-            .size = static_cast<size_t>(maybeMemory.size()),
+            .fd = std::move(fd),
+            .size = size,
     };
     return std::make_shared<const Memory>(Memory{.handle = std::move(handle)});
 }
 
 GeneralResult<Mapping> map(const Memory::Ashmem& memory) {
-    auto handle = NN_TRY(hidlHandleFromUniqueFd(NN_TRY(dupFd(memory.fd))));
-    const auto hidlMemory = hidl_memory("ashmem", std::move(handle), memory.size);
+    constexpr off64_t offset = 0;
+    constexpr int prot = PROT_READ | PROT_WRITE;
 
-    const auto mapping = mapMemory(hidlMemory);
-    if (mapping == nullptr) {
-        return NN_ERROR(ErrorStatus::GENERAL_FAILURE) << "Failed to map memory";
+    std::shared_ptr<base::MappedFile> mapping =
+            base::MappedFile::FromFd(memory.fd, offset, memory.size, prot);
+
+    if (mapping == nullptr || mapping->data() == nullptr) {
+        return NN_ERROR() << "Can't mmap the file descriptor.";
     }
-
-    auto* const pointer = mapping->getPointer().withDefault(nullptr);
-    if (pointer == nullptr) {
-        return NN_ERROR(ErrorStatus::GENERAL_FAILURE) << "Failed to get the mapped pointer";
-    }
-
-    const auto fullSize = mapping->getSize().withDefault(0);
-    if (fullSize == 0 || fullSize > std::numeric_limits<size_t>::max()) {
-        return NN_ERROR(ErrorStatus::GENERAL_FAILURE) << "Failed to get the mapped size";
-    }
-
-    const size_t size = static_cast<size_t>(fullSize);
 
     return Mapping{
-            .pointer = pointer,
-            .size = size,
-            .context = mapping,
+            .pointer = mapping->data(),
+            .size = memory.size,
+            .context = std::move(mapping),
     };
 }
 
-#else
+#else  // NN_COMPATIBILITY_LIBRARY_BUILD
 
 GeneralResult<SharedMemory> allocateSharedMemory(size_t size) {
     CHECK_GT(size, 0u);
@@ -175,9 +130,16 @@ size_t getSize(const Memory::Fd& memory) {
 }
 
 size_t getSize(const Memory::HardwareBuffer& memory) {
+#ifdef __ANDROID__
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(memory.handle.get(), &desc);
     return desc.format == AHARDWAREBUFFER_FORMAT_BLOB ? desc.width : 0;
+#else   // __ANDROID__
+    LOG(FATAL)
+            << "size_t getSize(const Memory::HardwareBuffer& memory): Not Available on Host Build";
+    (void)memory;
+    return 0;
+#endif  // __ANDROID__
 }
 
 size_t getSize(const Memory::Unknown& memory) {
@@ -210,6 +172,7 @@ GeneralResult<Mapping> map(const Memory::Fd& memory) {
 }
 
 GeneralResult<Mapping> map(const Memory::HardwareBuffer& memory) {
+#ifdef __ANDROID__
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(memory.handle.get(), &desc);
 
@@ -233,12 +196,19 @@ GeneralResult<Mapping> map(const Memory::HardwareBuffer& memory) {
     auto sharedScoped = std::make_shared<decltype(scoped)>(std::move(scoped));
 
     return Mapping{.pointer = data, .size = size, .context = std::move(sharedScoped)};
+#else   // __ANDROID__
+    LOG(FATAL) << "GeneralResult<Mapping> map(const Memory::HardwareBuffer& memory): Not Available "
+                  "on Host Build";
+    (void)memory;
+    return (NN_ERROR() << "map failed").operator nn::GeneralResult<Mapping>();
+#endif  // __ANDROID__
 }
 
 GeneralResult<Mapping> map(const Memory::Unknown& /*memory*/) {
     return NN_ERROR(ErrorStatus::INVALID_ARGUMENT) << "Cannot map Unknown memory";
 }
 
+#ifdef __ANDROID__
 void freeHardwareBuffer(AHardwareBuffer* buffer) {
     if (buffer) {
         AHardwareBuffer_release(buffer);
@@ -246,6 +216,7 @@ void freeHardwareBuffer(AHardwareBuffer* buffer) {
 }
 
 void freeNoop(AHardwareBuffer* /*buffer*/) {}
+#endif  // __ANDROID__
 
 }  // namespace
 
@@ -269,12 +240,14 @@ GeneralResult<SharedMemory> createSharedMemoryFromFd(size_t size, int prot, int 
     return createSharedMemoryFromUniqueFd(size, prot, NN_TRY(dupFd(fd)), offset);
 }
 
+#ifdef __ANDROID__
 GeneralResult<SharedMemory> createSharedMemoryFromAHWB(AHardwareBuffer* ahwb, bool takeOwnership) {
     CHECK(ahwb != nullptr);
     const Memory::HardwareBuffer::Deleter deleter = (takeOwnership ? freeHardwareBuffer : freeNoop);
     Memory::HardwareBuffer handle = {.handle = Memory::HardwareBuffer::Handle(ahwb, deleter)};
     return std::make_shared<const Memory>(Memory{.handle = std::move(handle)});
 }
+#endif  // __ANDROID__
 
 size_t getSize(const SharedMemory& memory) {
     CHECK(memory != nullptr);
@@ -282,10 +255,17 @@ size_t getSize(const SharedMemory& memory) {
 }
 
 bool isAhwbBlob(const Memory::HardwareBuffer& memory) {
+#ifdef __ANDROID__
     AHardwareBuffer* ahwb = memory.handle.get();
     AHardwareBuffer_Desc desc;
     AHardwareBuffer_describe(ahwb, &desc);
     return desc.format == AHARDWAREBUFFER_FORMAT_BLOB;
+#else   // __ANDROID__
+    LOG(FATAL)
+            << "bool isAhwbBlob(const Memory::HardwareBuffer& memory): Not Available on Host Build";
+    (void)memory;
+    return false;
+#endif  // __ANDROID__
 }
 
 bool isAhwbBlob(const SharedMemory& memory) {
