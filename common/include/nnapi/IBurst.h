@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_IBURST_H
-#define ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_IBURST_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_IBURST_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_IBURST_H
 
 #include <android-base/scopeguard.h>
 
@@ -96,6 +96,10 @@ class IBurst {
      *     this duration, the execution must be aborted. If no loop timeout duration is provided,
      *     the maximum amount of time is {@link kControlFlowTimeoutDefault}. When provided, the
      *     duration must not exceed {@link kControlFlowTimeoutMaximum}.
+     * @param hints Specifies the optional device specific execution hints. It is allowed for the
+     *     driver to ignore the user-provided hints.
+     * @param extensionNameToPrefix The mapping between extension names and prefixes of token
+     *.    values.
      * @return A pair consisting of:
      *     - A list of shape information of model output operands. The index into "outputShapes"
      *       corresponds to the index of the output operand in the Request outputs vector.
@@ -112,7 +116,9 @@ class IBurst {
      */
     virtual ExecutionResult<std::pair<std::vector<OutputShape>, Timing>> execute(
             const Request& request, MeasureTiming measure, const nn::OptionalTimePoint& deadline,
-            const nn::OptionalDuration& loopTimeoutDuration) const = 0;
+            const nn::OptionalDuration& loopTimeoutDuration,
+            const std::vector<nn::TokenValuePair>& hints,
+            const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const = 0;
 
     /**
      * Create a reusable burst execution object.
@@ -130,12 +136,18 @@ class IBurst {
      *     this duration, the execution must be aborted. If no loop timeout duration is provided,
      *     the maximum amount of time is {@link kControlFlowTimeoutDefault}. When provided, the
      *     duration must not exceed {@link kControlFlowTimeoutMaximum}.
+     * @param hints Specifies the optional device specific execution hints. The same token must not
+     *     be repeated. It is allowed for the driver to ignore the user-provided hints.
+     * @param extensionNameToPrefix The mapping between extension names and prefixes of token
+     *.    values.
      * @return execution An IExecution object representing a reusable burst execution that has been
      *     specialized for a fixed request, otherwise GeneralError.
      */
     virtual GeneralResult<SharedExecution> createReusableExecution(
             const Request& request, MeasureTiming measure,
-            const nn::OptionalDuration& loopTimeoutDuration) const = 0;
+            const nn::OptionalDuration& loopTimeoutDuration,
+            const std::vector<nn::TokenValuePair>& hints,
+            const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const = 0;
 
     // Public virtual destructor to allow objects to be stored (and destroyed) as smart pointers.
     // E.g., std::unique_ptr<IBurst>.
@@ -152,4 +164,4 @@ class IBurst {
 
 }  // namespace android::nn
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_NNAPI_IBURST_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_NNAPI_IBURST_H
