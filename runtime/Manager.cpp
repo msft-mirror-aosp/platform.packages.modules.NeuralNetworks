@@ -28,6 +28,7 @@
 #include <nnapi/IExecution.h>
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/SharedMemory.h>
+#include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
 
@@ -54,8 +55,6 @@
 #include <cutils/native_handle.h>
 #include <nnapi/hal/1.3/Buffer.h>
 #include <nnapi/hal/Service.h>
-
-#include "AppInfoFetcher.h"
 #endif  // NN_COMPATIBILITY_LIBRARY_BUILD
 
 #ifdef NN_EXPERIMENTAL_FEATURE
@@ -105,16 +104,15 @@ class DriverDevice : public Device {
    public:
     // Create a DriverDevice from a name and a DeviceFactory function.
     // Returns nullptr on failure.
-    static std::shared_ptr<DriverDevice> create(SharedDevice device, bool isUpdatable = false);
+    static std::shared_ptr<DriverDevice> create(SharedDevice device);
 
     // Prefer using DriverDevice::create
-    explicit DriverDevice(SharedDevice device, bool isUpdatable);
+    explicit DriverDevice(SharedDevice device);
 
     const std::string& getName() const override { return kInterface->getName(); }
     const std::string& getVersionString() const override { return kInterface->getVersionString(); }
     Version getFeatureLevel() const override { return kInterface->getFeatureLevel(); }
     int32_t getType() const override { return static_cast<int32_t>(kInterface->getType()); }
-    bool isUpdatable() const override { return kIsUpdatable; }
     const std::vector<Extension>& getSupportedExtensions() const override {
         return kInterface->getSupportedExtensions();
     }
@@ -164,7 +162,6 @@ class DriverDevice : public Device {
 
    private:
     const SharedDevice kInterface;
-    const bool kIsUpdatable;
 
     GeneralResult<std::vector<bool>> getSupportedOperationsImpl(const MetaModel& metaModel) const;
     GeneralResult<SharedPreparedModel> prepareModelFromCacheInternal(
@@ -274,8 +271,7 @@ class DriverExecution : public RuntimeExecution {
     std::vector<TokenValuePair> kMetaData;
 };
 
-DriverDevice::DriverDevice(SharedDevice device, bool isUpdatable)
-    : kInterface(std::move(device)), kIsUpdatable(isUpdatable) {
+DriverDevice::DriverDevice(SharedDevice device) : kInterface(std::move(device)) {
     CHECK(kInterface != nullptr);
 #ifdef NN_DEBUGGABLE
     static const char samplePrefix[] = "sample";
@@ -285,13 +281,13 @@ DriverDevice::DriverDevice(SharedDevice device, bool isUpdatable)
 #endif  // NN_DEBUGGABLE
 }
 
-std::shared_ptr<DriverDevice> DriverDevice::create(SharedDevice device, bool isUpdatable) {
+std::shared_ptr<DriverDevice> DriverDevice::create(SharedDevice device) {
     if (device == nullptr) {
         LOG(ERROR) << "DriverDevice::create called with nullptr";
         return nullptr;
     }
 
-    return std::make_shared<DriverDevice>(std::move(device), isUpdatable);
+    return std::make_shared<DriverDevice>(std::move(device));
 }
 
 int64_t DeviceManager::versionToFeatureLevel(Version::Level versionLevel) {
@@ -854,41 +850,7 @@ std::tuple<int, int, ExecuteFencedInfoCallback, Timing> DriverExecution::compute
 
 static Capabilities createCpuCapabilities() {
     constexpr Capabilities::PerformanceInfo kPerf = {.execTime = 1.0f, .powerUsage = 1.0f};
-    constexpr OperandType operandTypes[] = {
-            OperandType::FLOAT32,
-            OperandType::INT32,
-            OperandType::UINT32,
-            OperandType::TENSOR_FLOAT32,
-            OperandType::TENSOR_INT32,
-            OperandType::TENSOR_QUANT8_ASYMM,
-            OperandType::BOOL,
-            OperandType::TENSOR_QUANT16_SYMM,
-            OperandType::TENSOR_FLOAT16,
-            OperandType::TENSOR_BOOL8,
-            OperandType::FLOAT16,
-            OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL,
-            OperandType::TENSOR_QUANT16_ASYMM,
-            OperandType::TENSOR_QUANT8_SYMM,
-            OperandType::TENSOR_QUANT8_ASYMM_SIGNED,
-    };
-
-    std::vector<Capabilities::OperandPerformance> operandPerformance;
-    operandPerformance.reserve(std::size(operandTypes));
-    std::transform(std::begin(operandTypes), std::end(operandTypes),
-                   std::back_inserter(operandPerformance), [kPerf](OperandType type) {
-                       return Capabilities::OperandPerformance{.type = type, .info = kPerf};
-                   });
-
-    auto table =
-            Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)).value();
-
-    return Capabilities{
-            .relaxedFloat32toFloat16PerformanceScalar = kPerf,
-            .relaxedFloat32toFloat16PerformanceTensor = kPerf,
-            .operandPerformance = std::move(table),
-            .ifPerformance = kPerf,
-            .whilePerformance = kPerf,
-    };
+    return makeCapabilities(kPerf, kPerf, kPerf);
 }
 
 // A special abstracted device for the CPU. Only one instance of this class will exist.
@@ -905,7 +867,6 @@ class CpuDevice : public Device {
     const std::string& getVersionString() const override { return kVersionString; }
     Version getFeatureLevel() const override { return kVersion; }
     int32_t getType() const override { return ANEURALNETWORKS_DEVICE_CPU; }
-    bool isUpdatable() const override { return false; }
     const std::vector<Extension>& getSupportedExtensions() const override {
         return kSupportedExtensions;
     }
@@ -1326,20 +1287,15 @@ std::shared_ptr<Device> DeviceManager::forTest_makeDriverDevice(const SharedDevi
 }
 
 #ifndef NN_COMPATIBILITY_LIBRARY_BUILD
-std::vector<std::shared_ptr<DriverDevice>> getDriverDevices() {
+std::vector<std::shared_ptr<DriverDevice>> getDriverDevices(
+        [[maybe_unused]] Version::Level maxFeatureLevelAllowed) {
 #ifdef __ANDROID__
-    const auto& appInfo = AppInfoFetcher::get()->getAppInfo();
-    const bool currentProcessIsOnThePlatform =
-            appInfo.appIsSystemApp || appInfo.appIsOnVendorImage || appInfo.appIsOnProductImage;
-
-    const bool includeUpdatableDrivers = !currentProcessIsOnThePlatform;
-    auto devicesAndUpdatability =
-            hardware::neuralnetworks::service::getDevices(includeUpdatableDrivers);
+    auto devices = hardware::neuralnetworks::service::getDevices(maxFeatureLevelAllowed);
 
     std::vector<std::shared_ptr<DriverDevice>> driverDevices;
-    driverDevices.reserve(devicesAndUpdatability.size());
-    for (auto& [device, isDeviceUpdatable] : devicesAndUpdatability) {
-        driverDevices.push_back(DriverDevice::create(std::move(device), isDeviceUpdatable));
+    driverDevices.reserve(devices.size());
+    for (auto& device : devices) {
+        driverDevices.push_back(DriverDevice::create(std::move(device)));
     }
     return driverDevices;
 #else   // __ANDROID__
@@ -1347,7 +1303,8 @@ std::vector<std::shared_ptr<DriverDevice>> getDriverDevices() {
 #endif  // __ANDROID__
 }
 #else
-std::vector<std::shared_ptr<DriverDevice>> getDriverDevices() {
+std::vector<std::shared_ptr<DriverDevice>> getDriverDevices(
+        Version::Level /*maxFeatureLevelAllowed*/) {
     auto devices = getDevices();
     std::vector<std::shared_ptr<DriverDevice>> driverDevices;
     driverDevices.reserve(devices.size());
@@ -1372,7 +1329,7 @@ void DeviceManager::findAvailableDevices() {
 #endif  // NN_DEBUGGABLE
 
     // register driver devices
-    auto driverDevices = getDriverDevices();
+    auto driverDevices = getDriverDevices(mRuntimeVersion.level);
     for (auto& driverDevice : driverDevices) {
 #ifdef NN_DEBUGGABLE
         if (!std::regex_match(driverDevice->getName(), pattern)) {
