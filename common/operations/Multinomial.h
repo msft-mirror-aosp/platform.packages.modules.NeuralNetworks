@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_MULTINOMIAL_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_MULTINOMIAL_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_MULTINOMIAL_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_MULTINOMIAL_H
 
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
-#include "OperationsValidationUtils.h"
 #include "nnapi/Types.h"
 
 namespace android {
@@ -57,4 +56,4 @@ class Multinomial {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATIONS_MULTINOMIAL_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_OPERATIONS_MULTINOMIAL_H
