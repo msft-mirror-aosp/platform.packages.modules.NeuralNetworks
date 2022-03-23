@@ -489,8 +489,7 @@ std::unique_ptr<::android::nn::sl_wrapper::Memory> convertFromHAL(
             return memory;
         }
     }
-    LOG(ERROR) << "Can't convert to SL Memory, unknown pool tag: "
-               << utils::underlyingType(pool.getTag());
+    LOG(ERROR) << "Can't convert to SL Memory, unknown pool tag: " << pool.getTag();
     return nullptr;
 }
 
