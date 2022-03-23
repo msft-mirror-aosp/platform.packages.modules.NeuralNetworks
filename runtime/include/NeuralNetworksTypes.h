@@ -23,8 +23,8 @@
  * @file NeuralNetworksTypes.h
  */
 
-#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_TYPES_H
-#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_TYPES_H
+#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_TYPES_H
+#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_TYPES_H
 
 /******************************************************************
  *
@@ -42,14 +42,11 @@
  *   - DO NOT CHANGE THE LAYOUT OR SIZE OF STRUCTURES
  */
 
+#include <android/hardware_buffer.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/cdefs.h>
-
-#ifdef __ANDROID__
-#include <android/hardware_buffer.h>
-#endif  // __ANDROID__
 
 __BEGIN_DECLS
 
@@ -197,6 +194,7 @@ typedef enum {
      * Available since NNAPI feature level 4.
      */
     ANEURALNETWORKS_TENSOR_QUANT8_ASYMM_SIGNED = 14,
+
     /**
      * A reference to a model.
      *
@@ -5586,7 +5584,7 @@ typedef enum {
      * The output is calculated using the following formula:
      *
      *     h-swish(x) = x * max(0, min(6, (x + 3))) / 6
-     *
+
      * Supported tensor {@link OperandCode}:
      * * {@link ANEURALNETWORKS_TENSOR_FLOAT16}
      * * {@link ANEURALNETWORKS_TENSOR_FLOAT32}
@@ -5971,8 +5969,6 @@ typedef enum {
     ANEURALNETWORKS_FEATURE_LEVEL_6 = 1000006,
     /** Android NNAPI feature level 7 */
     ANEURALNETWORKS_FEATURE_LEVEL_7 = 1000007,
-    /** Android NNAPI feature level 8 */
-    ANEURALNETWORKS_FEATURE_LEVEL_8 = 1000008,
 } FeatureLevelCode;
 
 /**
@@ -6559,6 +6555,6 @@ typedef struct ANeuralNetworksMemoryDesc ANeuralNetworksMemoryDesc;
 
 __END_DECLS
 
-#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_NEURAL_NETWORKS_TYPES_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_RUNTIME_NEURAL_NETWORKS_TYPES_H
 
 /** @} */

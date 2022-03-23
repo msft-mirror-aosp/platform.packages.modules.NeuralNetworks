@@ -1,63 +1,96 @@
 model {
-  main {
-    operands {
-      operand {
-        type: TENSOR_QUANT8_ASYMM_SIGNED
-        dimensions {
-          dimension: 1
-          dimension: 2
-          dimension: 2
-          dimension: 1
-        }
-        scale: 0.5
-        zero_point: -128
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 2145684100
-        }
+  operands {
+    operand {
+      type: TENSOR_FLOAT16
+      dimensions {
+        dimension: 1
+        dimension: 2
+        dimension: 2
+        dimension: 8
       }
-      operand {
-        type: TENSOR_QUANT8_ASYMM_SIGNED
-        dimensions {
-          dimension: 1
-          dimension: 2
-          dimension: 2
-          dimension: 1
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
         }
-        scale: 0.5
-        zero_point: -128
-        lifetime: SUBGRAPH_OUTPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          scalar: 2189591170
-        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 1331284804
       }
     }
-    operations {
-      operation {
-        type: RELU1
-        inputs {
-          index: 0
+    operand {
+      type: INT32
+      dimensions {
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: CONSTANT_COPY
+      channel_quant {
+        scales {
         }
-        outputs {
-          index: 1
-        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 1503006379
       }
     }
-    input_indexes {
-      index: 0
+    operand {
+      type: BOOL
+      dimensions {
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: CONSTANT_COPY
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 965637500
+      }
     }
-    output_indexes {
-      index: 1
+    operand {
+      type: BOOL
+      dimensions {
+        dimension: 1
+        dimension: 4
+        dimension: 4
+        dimension: 2
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_OUTPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 3781732904
+      }
     }
   }
-  referenced {
+  operations {
+    operation {
+      type: DEPTH_TO_SPACE
+      inputs {
+        index: 0
+        index: 1
+        index: 2
+      }
+      outputs {
+        index: 3
+      }
+    }
   }
+  input_indexes {
+    index: 0
+  }
+  output_indexes {
+    index: 3
+  }
+  is_relaxed: false
 }
