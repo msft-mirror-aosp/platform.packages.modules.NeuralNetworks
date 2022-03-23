@@ -69,6 +69,15 @@ createRunTimePoolInfos(const Request& request, const BufferTracker& bufferTracke
     return std::make_pair(std::move(requestPoolInfos), std::move(bufferWrappers));
 }
 
+template <typename T>
+ExecutionResult<T> makeExecutionResult(GeneralResult<T> result) {
+    if (!result.has_value()) {
+        const auto& [message, code] = std::move(result).error();
+        return error(code) << message;
+    }
+    return std::move(result).value();
+}
+
 ErrorStatus updateDeviceMemories(ErrorStatus status, const Request& request,
                                  const std::vector<std::shared_ptr<ManagedBuffer>>& bufferWrappers,
                                  const std::vector<OutputShape>& outputShapes) {
@@ -126,8 +135,7 @@ PreparedModel::PreparedModel(Model model, ExecutionPreference preference, Priori
 
 ExecutionResult<std::pair<std::vector<OutputShape>, Timing>> PreparedModel::execute(
         const Request& request, MeasureTiming measure, const OptionalTimePoint& deadline,
-        const OptionalDuration& loopTimeoutDuration, const std::vector<TokenValuePair>& /*hints*/,
-        const std::vector<ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const OptionalDuration& loopTimeoutDuration) const {
     NNTRACE_FULL(NNTRACE_LAYER_DRIVER, NNTRACE_PHASE_EXECUTION, "sample::PreparedModel::execute");
     VLOG(DRIVER) << "sample::PreparedModel::execute(" << SHOW_IF_DEBUG(request) << ")";
 
@@ -144,7 +152,7 @@ ExecutionResult<std::pair<std::vector<OutputShape>, Timing>> PreparedModel::exec
     NNTRACE_FULL_SWITCH(NNTRACE_LAYER_DRIVER, NNTRACE_PHASE_INPUTS_AND_OUTPUTS,
                         "sample::Device::execute");
     const auto [requestPoolInfos, bufferWrappers] =
-            NN_TRY(createRunTimePoolInfos(request, *kBufferTracker, *this));
+            NN_TRY(makeExecutionResult(createRunTimePoolInfos(request, *kBufferTracker, *this)));
 
     NNTRACE_FULL_SWITCH(NNTRACE_LAYER_DRIVER, NNTRACE_PHASE_EXECUTION, "sample::Device::execute");
     auto executor = CpuExecutor(&kOperationResolver);
@@ -186,9 +194,7 @@ ExecutionResult<std::pair<std::vector<OutputShape>, Timing>> PreparedModel::exec
 GeneralResult<std::pair<SyncFence, ExecuteFencedInfoCallback>> PreparedModel::executeFenced(
         const Request& request, const std::vector<SyncFence>& waitFor, MeasureTiming measure,
         const OptionalTimePoint& deadline, const OptionalDuration& loopTimeoutDuration,
-        const OptionalDuration& timeoutDurationAfterFence,
-        const std::vector<TokenValuePair>& /*hints*/,
-        const std::vector<ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const OptionalDuration& timeoutDurationAfterFence) const {
     NNTRACE_FULL(NNTRACE_LAYER_DRIVER, NNTRACE_PHASE_EXECUTION,
                  "sample::PreparedModel::executeFenced");
     VLOG(DRIVER) << "executeFenced(" << SHOW_IF_DEBUG(request) << ")";
@@ -196,15 +202,8 @@ GeneralResult<std::pair<SyncFence, ExecuteFencedInfoCallback>> PreparedModel::ex
     TimePoint driverStart, driverEnd, deviceStart, deviceEnd;
     if (measure == MeasureTiming::YES) driverStart = Clock::now();
 
-    if (const auto result =
-                validateRequestForModel(request, kModel, /*allowUnspecifiedOutput=*/false);
-        !result.ok()) {
+    if (const auto result = validateRequestForModel(request, kModel); !result.ok()) {
         return NN_ERROR(ErrorStatus::INVALID_ARGUMENT) << result.error();
-    }
-    if (std::any_of(waitFor.begin(), waitFor.end(),
-                    [](const SyncFence& syncFence) { return !syncFence.getSharedHandle(); })) {
-        return NN_ERROR(ErrorStatus::INVALID_ARGUMENT)
-               << "sample::PreparedModel::executeFenced passed an empty SyncFence";
     }
     if (hasDeadlinePassed(deadline)) {
         return NN_ERROR(ErrorStatus::MISSED_DEADLINE_PERSISTENT);
@@ -212,6 +211,9 @@ GeneralResult<std::pair<SyncFence, ExecuteFencedInfoCallback>> PreparedModel::ex
 
     // Wait for the dependent events to signal
     for (const auto& syncFence : waitFor) {
+        if (!syncFence.getSharedHandle()) {
+            return NN_ERROR(ErrorStatus::INVALID_ARGUMENT);
+        }
         if (syncFence.syncWait({}) != SyncFence::FenceState::SIGNALED) {
             return NN_ERROR(ErrorStatus::GENERAL_FAILURE) << "syncWait failed";
         }
@@ -280,9 +282,8 @@ GeneralResult<std::pair<SyncFence, ExecuteFencedInfoCallback>> PreparedModel::ex
 }
 
 GeneralResult<SharedExecution> PreparedModel::createReusableExecution(
-        const Request& request, MeasureTiming measure, const OptionalDuration& loopTimeoutDuration,
-        const std::vector<TokenValuePair>& /*hints*/,
-        const std::vector<ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const Request& request, MeasureTiming measure,
+        const OptionalDuration& loopTimeoutDuration) const {
     NNTRACE_FULL(NNTRACE_LAYER_DRIVER, NNTRACE_PHASE_EXECUTION,
                  "sample::PreparedModel::createReusableExecution");
     return std::make_shared<DefaultExecution>(shared_from_this(), request, measure,

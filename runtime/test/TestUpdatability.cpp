@@ -20,15 +20,9 @@
 
 class UpdatabilityTest : public ::testing::Test {};
 
-// Keep this value in sync with the corresponding value of kMinFeatureLevelNum in
-// runtime/ServerFlag.h.
-constexpr int64_t kMinFeatureLevelCode = ANEURALNETWORKS_FEATURE_LEVEL_5;
-
 TEST_F(UpdatabilityTest, GetFeatureLevel) {
     if (__builtin_available(android __NNAPI_FL5_MIN_ANDROID_API__, *)) {
-        // Ensure that the feature level returned is never less than what is allowed by the server
-        // feature level flag.
-        EXPECT_GE(ANeuralNetworks_getRuntimeFeatureLevel(), kMinFeatureLevelCode);
+        EXPECT_GE(ANeuralNetworks_getRuntimeFeatureLevel(), ANEURALNETWORKS_FEATURE_LEVEL_5);
     } else {
         GTEST_SKIP();
     }
