@@ -25,17 +25,17 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include "HalInterfaces.h"
 #include "Tracing.h"
-#include "Utils.h"
 
 namespace android::nn {
 namespace {
+
+using namespace hal;
 
 using hardware::MQDescriptorSync;
 using V1_2::FmqRequestDatum;
@@ -43,8 +43,8 @@ using V1_2::FmqResultDatum;
 using V1_2::IBurstCallback;
 using V1_2::IBurstContext;
 
-constexpr V1_2::Timing kNoTiming = {std::numeric_limits<uint64_t>::max(),
-                                    std::numeric_limits<uint64_t>::max()};
+constexpr Timing kNoTiming = {std::numeric_limits<uint64_t>::max(),
+                              std::numeric_limits<uint64_t>::max()};
 
 // DefaultBurstExecutorWithCache adapts an IPreparedModel so that it can be
 // used as an IBurstExecutorWithCache. Specifically, the cache simply stores the
@@ -61,17 +61,17 @@ class DefaultBurstExecutorWithCache : public ExecutionBurstServer::IBurstExecuto
         return (it != mMemoryCache.end()) && it->second.valid();
     }
 
-    void addCacheEntry(const hardware::hidl_memory& memory, int32_t slot) override {
+    void addCacheEntry(const hidl_memory& memory, int32_t slot) override {
         mMemoryCache[slot] = memory;
     }
 
     void removeCacheEntry(int32_t slot) override { mMemoryCache.erase(slot); }
 
-    std::tuple<V1_0::ErrorStatus, hardware::hidl_vec<V1_2::OutputShape>, V1_2::Timing> execute(
+    std::tuple<V1_0::ErrorStatus, hidl_vec<OutputShape>, Timing> execute(
             const V1_0::Request& request, const std::vector<int32_t>& slots,
-            V1_2::MeasureTiming measure) override {
+            MeasureTiming measure) override {
         // convert slots to pools
-        hardware::hidl_vec<hardware::hidl_memory> pools(slots.size());
+        hidl_vec<hidl_memory> pools(slots.size());
         std::transform(slots.begin(), slots.end(), pools.begin(),
                        [this](int32_t slot) { return mMemoryCache[slot]; });
 
@@ -81,20 +81,18 @@ class DefaultBurstExecutorWithCache : public ExecutionBurstServer::IBurstExecuto
 
         // setup execution
         V1_0::ErrorStatus returnedStatus = V1_0::ErrorStatus::GENERAL_FAILURE;
-        hardware::hidl_vec<V1_2::OutputShape> returnedOutputShapes;
-        V1_2::Timing returnedTiming;
+        hidl_vec<OutputShape> returnedOutputShapes;
+        Timing returnedTiming;
         auto cb = [&returnedStatus, &returnedOutputShapes, &returnedTiming](
-                          V1_0::ErrorStatus status,
-                          const hardware::hidl_vec<V1_2::OutputShape>& outputShapes,
-                          const V1_2::Timing& timing) {
+                          V1_0::ErrorStatus status, const hidl_vec<OutputShape>& outputShapes,
+                          const Timing& timing) {
             returnedStatus = status;
             returnedOutputShapes = outputShapes;
             returnedTiming = timing;
         };
 
         // execute
-        const hardware::Return<void> ret =
-                mpPreparedModel->executeSynchronously(fullRequest, measure, cb);
+        const Return<void> ret = mpPreparedModel->executeSynchronously(fullRequest, measure, cb);
         if (!ret.isOk() || returnedStatus != V1_0::ErrorStatus::NONE) {
             LOG(ERROR) << "IPreparedModelAdapter::execute -- Error executing";
             return {returnedStatus, std::move(returnedOutputShapes), kNoTiming};
@@ -105,15 +103,14 @@ class DefaultBurstExecutorWithCache : public ExecutionBurstServer::IBurstExecuto
 
    private:
     V1_2::IPreparedModel* const mpPreparedModel;
-    std::map<int32_t, hardware::hidl_memory> mMemoryCache;
+    std::map<int32_t, hidl_memory> mMemoryCache;
 };
 
 }  // anonymous namespace
 
 // serialize result
 std::vector<FmqResultDatum> serialize(V1_0::ErrorStatus errorStatus,
-                                      const std::vector<V1_2::OutputShape>& outputShapes,
-                                      V1_2::Timing timing) {
+                                      const std::vector<OutputShape>& outputShapes, Timing timing) {
     // count how many elements need to be sent for a request
     size_t count = 2 + outputShapes.size();
     for (const auto& outputShape : outputShapes) {
@@ -164,7 +161,7 @@ std::vector<FmqResultDatum> serialize(V1_0::ErrorStatus errorStatus,
 }
 
 // deserialize request
-std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTiming>> deserialize(
+std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, MeasureTiming>> deserialize(
         const std::vector<FmqRequestDatum>& data) {
     using discriminator = FmqRequestDatum::hidl_discriminator;
 
@@ -191,7 +188,7 @@ std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTimin
     }
 
     // unpackage input operands
-    std::vector<V1_0::RequestArgument> inputs;
+    std::vector<RequestArgument> inputs;
     inputs.reserve(numberOfInputOperands);
     for (size_t operand = 0; operand < numberOfInputOperands; ++operand) {
         // validate input operand information
@@ -205,7 +202,7 @@ std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTimin
                 data[index].inputOperandInformation();
         index++;
         const bool hasNoValue = operandInfo.hasNoValue;
-        const V1_0::DataLocation location = operandInfo.location;
+        const DataLocation location = operandInfo.location;
         const uint32_t numberOfDimensions = operandInfo.numberOfDimensions;
 
         // unpackage operand dimensions
@@ -232,7 +229,7 @@ std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTimin
     }
 
     // unpackage output operands
-    std::vector<V1_0::RequestArgument> outputs;
+    std::vector<RequestArgument> outputs;
     outputs.reserve(numberOfOutputOperands);
     for (size_t operand = 0; operand < numberOfOutputOperands; ++operand) {
         // validate output operand information
@@ -246,7 +243,7 @@ std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTimin
                 data[index].outputOperandInformation();
         index++;
         const bool hasNoValue = operandInfo.hasNoValue;
-        const V1_0::DataLocation location = operandInfo.location;
+        const DataLocation location = operandInfo.location;
         const uint32_t numberOfDimensions = operandInfo.numberOfDimensions;
 
         // unpackage operand dimensions
@@ -297,7 +294,7 @@ std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTimin
     }
 
     // unpackage measureTiming
-    const V1_2::MeasureTiming measure = data[index].measureTiming();
+    const MeasureTiming measure = data[index].measureTiming();
     index++;
 
     // validate packet information
@@ -336,7 +333,7 @@ RequestChannelReceiver::RequestChannelReceiver(std::unique_ptr<FmqRequestChannel
                                                std::chrono::microseconds pollingTimeWindow)
     : mFmqRequestChannel(std::move(fmqRequestChannel)), kPollingTimeWindow(pollingTimeWindow) {}
 
-std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, V1_2::MeasureTiming>>
+std::optional<std::tuple<V1_0::Request, std::vector<int32_t>, MeasureTiming>>
 RequestChannelReceiver::getBlocking() {
     const auto packet = getPacketBlocking();
     if (!packet) {
@@ -363,6 +360,7 @@ void RequestChannelReceiver::invalidate() {
 }
 
 std::optional<std::vector<FmqRequestDatum>> RequestChannelReceiver::getPacketBlocking() {
+    using discriminator = FmqRequestDatum::hidl_discriminator;
 
     if (mTeardown) {
         return std::nullopt;
@@ -401,8 +399,6 @@ std::optional<std::vector<FmqRequestDatum>> RequestChannelReceiver::getPacketBlo
             }
             return std::make_optional(std::move(packet));
         }
-
-        std::this_thread::yield();
     }
 
     // If we get to this point, we either stopped polling because it was taking
@@ -468,8 +464,7 @@ ResultChannelSender::ResultChannelSender(std::unique_ptr<FmqResultChannel> fmqRe
     : mFmqResultChannel(std::move(fmqResultChannel)) {}
 
 bool ResultChannelSender::send(V1_0::ErrorStatus errorStatus,
-                               const std::vector<V1_2::OutputShape>& outputShapes,
-                               V1_2::Timing timing) {
+                               const std::vector<OutputShape>& outputShapes, Timing timing) {
     const std::vector<FmqResultDatum> serialized = serialize(errorStatus, outputShapes, timing);
     return sendPacket(serialized);
 }
@@ -561,10 +556,10 @@ ExecutionBurstServer::~ExecutionBurstServer() {
     mWorker.join();
 }
 
-hardware::Return<void> ExecutionBurstServer::freeMemory(int32_t slot) {
+Return<void> ExecutionBurstServer::freeMemory(int32_t slot) {
     std::lock_guard<std::mutex> hold(mMutex);
     mExecutorWithCache->removeCacheEntry(slot);
-    return hardware::Void();
+    return Void();
 }
 
 void ExecutionBurstServer::ensureCacheEntriesArePresentLocked(const std::vector<int32_t>& slots) {
@@ -586,15 +581,14 @@ void ExecutionBurstServer::ensureCacheEntriesArePresentLocked(const std::vector<
     }
 
     V1_0::ErrorStatus errorStatus = V1_0::ErrorStatus::GENERAL_FAILURE;
-    std::vector<hardware::hidl_memory> returnedMemories;
-    auto cb = [&errorStatus, &returnedMemories](
-                      V1_0::ErrorStatus status,
-                      const hardware::hidl_vec<hardware::hidl_memory>& memories) {
+    std::vector<hidl_memory> returnedMemories;
+    auto cb = [&errorStatus, &returnedMemories](V1_0::ErrorStatus status,
+                                                const hidl_vec<hidl_memory>& memories) {
         errorStatus = status;
         returnedMemories = memories;
     };
 
-    const hardware::Return<void> ret = mCallback->getMemories(unknownSlots, cb);
+    const Return<void> ret = mCallback->getMemories(unknownSlots, cb);
 
     if (!ret.isOk() || errorStatus != V1_0::ErrorStatus::NONE ||
         returnedMemories.size() != unknownSlots.size()) {

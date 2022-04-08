@@ -21,13 +21,11 @@
 #include <cmath>
 #include <vector>
 
+#include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
 #include "Tracing.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
 namespace nn {
@@ -48,8 +46,9 @@ constexpr uint32_t kLayoutScalar = 7;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 template <typename T_Input, typename T_Roi>
 inline bool roiPoolingNhwc(const T_Input* inputData, const Shape& inputShape, const T_Roi* roiData,
@@ -187,9 +186,8 @@ inline bool roiPooling<int8_t, uint16_t>(const int8_t* inputData, const Shape& i
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     std::vector<OperandType> inExpectedTypes;
@@ -215,18 +213,19 @@ Result<Version> validate(const IOperationValidationContext* context) {
                            OperandType::FLOAT32,
                            OperandType::BOOL};
     } else {
-        return NN_ERROR() << "Unsupported input tensor type for operation " << kOperationName;
+        LOG(ERROR) << "Unsupported input tensor type for operation " << kOperationName;
+        return false;
     }
     NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
     NN_RET_CHECK(validateOutputTypes(context, {inputType}));
     if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
+        return validateHalVersion(context, HalVersion::V1_3);
+        ;
     } else {
-        return Version::ANDROID_Q;
+        return validateHalVersion(context, HalVersion::V1_2);
     }
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     bool useNchw = context->getInputValue<bool>(kLayoutScalar);
     Shape input = context->getInputShape(kInputTensor);
@@ -328,7 +327,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace roi_pooling
 

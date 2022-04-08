@@ -16,6 +16,7 @@
 
 #define LOG_TAG "Operations"
 
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
 #include "Tracing.h"
@@ -23,6 +24,8 @@
 namespace android {
 namespace nn {
 namespace channel_shuffle {
+
+using namespace hal;
 
 constexpr char kOperationName[] = "CHANNEL_SHUFFLE";
 
@@ -57,7 +60,7 @@ inline bool eval(const T* inputData, const Shape& inputShape, int32_t numGroups,
     return true;
 }
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
@@ -73,9 +76,9 @@ Result<Version> validate(const IOperationValidationContext* context) {
     NN_RET_CHECK(validateInputTypes(context, {inputType, OperandType::INT32, OperandType::INT32}));
     NN_RET_CHECK(validateOutputTypes(context, {inputType}));
     if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
+        return validateHalVersion(context, HalVersion::V1_3);
     } else {
-        return Version::ANDROID_Q;
+        return validateHalVersion(context, HalVersion::V1_2);
     }
 }
 

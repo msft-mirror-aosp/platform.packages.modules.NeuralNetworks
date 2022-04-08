@@ -18,7 +18,7 @@
 
 #include "ExpandDims.h"
 
-#include "LegacyUtils.h"
+#include "Utils.h"
 
 namespace android {
 namespace nn {

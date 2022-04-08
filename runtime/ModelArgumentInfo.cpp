@@ -18,24 +18,26 @@
 
 #include "ModelArgumentInfo.h"
 
-#include <LegacyUtils.h>
-
 #include <algorithm>
 #include <utility>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "NeuralNetworks.h"
 #include "TypeManager.h"
+#include "Utils.h"
 
 namespace android {
 namespace nn {
+
+using namespace hal;
 
 static const std::pair<int, ModelArgumentInfo> kBadDataModelArgumentInfo{ANEURALNETWORKS_BAD_DATA,
                                                                          {}};
 
 std::pair<int, ModelArgumentInfo> ModelArgumentInfo::createFromPointer(
-        const Operand& operand, const ANeuralNetworksOperandType* type, void* data, uint32_t length,
-        bool paddingEnabled) {
+        const Operand& operand, const ANeuralNetworksOperandType* type, void* data,
+        uint32_t length) {
     if ((data == nullptr) != (length == 0)) {
         const char* dataPtrMsg = data ? "NOT_NULLPTR" : "NULLPTR";
         LOG(ERROR) << "Data pointer must be nullptr if and only if length is zero (data = "
@@ -44,7 +46,6 @@ std::pair<int, ModelArgumentInfo> ModelArgumentInfo::createFromPointer(
     }
 
     ModelArgumentInfo ret;
-    uint32_t neededLength = 0;
     if (data == nullptr) {
         ret.mState = ModelArgumentInfo::HAS_NO_VALUE;
     } else {
@@ -52,60 +53,41 @@ std::pair<int, ModelArgumentInfo> ModelArgumentInfo::createFromPointer(
             return {n, ModelArgumentInfo()};
         }
         if (operand.type != OperandType::OEM) {
-            neededLength = TypeManager::get()->getSizeOfData(operand.type, ret.mDimensions);
-            if (neededLength > length) {
+            uint32_t neededLength =
+                    TypeManager::get()->getSizeOfData(operand.type, ret.mDimensions);
+            if (neededLength != length && neededLength != 0) {
                 LOG(ERROR) << "Setting argument with invalid length: " << length
-                           << ", minimum length expected: " << neededLength;
+                           << ", expected length: " << neededLength;
                 return kBadDataModelArgumentInfo;
             }
         }
         ret.mState = ModelArgumentInfo::POINTER;
     }
-    const uint32_t rawLength = neededLength == 0 ? length : neededLength;
-    const uint32_t padding = length - rawLength;
-
-    if (!paddingEnabled && padding > 0) {
-        LOG(ERROR) << "Setting argument with padded length without enabling input and output "
-                      "padding -- length: "
-                   << length << ", expected length: " << neededLength;
-        return kBadDataModelArgumentInfo;
-    }
-
     ret.mBuffer = data;
-    ret.mLocationAndLength = {.poolIndex = 0, .offset = 0, .length = rawLength, .padding = padding};
+    ret.mLocationAndLength = {.poolIndex = 0, .offset = 0, .length = length};
     return {ANEURALNETWORKS_NO_ERROR, ret};
 }
 
 std::pair<int, ModelArgumentInfo> ModelArgumentInfo::createFromMemory(
         const Operand& operand, const ANeuralNetworksOperandType* type, uint32_t poolIndex,
-        uint32_t offset, uint32_t length, bool paddingEnabled) {
+        uint32_t offset, uint32_t length) {
     ModelArgumentInfo ret;
     if (int n = ret.updateDimensionInfo(operand, type)) {
         return {n, ModelArgumentInfo()};
     }
     const bool isMemorySizeKnown = offset != 0 || length != 0;
-    uint32_t neededLength = 0;
     if (isMemorySizeKnown && operand.type != OperandType::OEM) {
-        neededLength = TypeManager::get()->getSizeOfData(operand.type, ret.mDimensions);
-        if (neededLength > length) {
+        const uint32_t neededLength =
+                TypeManager::get()->getSizeOfData(operand.type, ret.mDimensions);
+        if (neededLength != length && neededLength != 0) {
             LOG(ERROR) << "Setting argument with invalid length: " << length
-                       << " (offset: " << offset << "), minimum length expected: " << neededLength;
+                       << " (offset: " << offset << "), expected length: " << neededLength;
             return kBadDataModelArgumentInfo;
         }
     }
-    const uint32_t rawLength = neededLength == 0 ? length : neededLength;
-    const uint32_t padding = length - rawLength;
-
-    if (!paddingEnabled && padding > 0) {
-        LOG(ERROR) << "Setting argument with padded length without enabling input and output "
-                      "padding -- length: "
-                   << length << ", offset: " << offset << ", expected length: " << neededLength;
-        return kBadDataModelArgumentInfo;
-    }
 
     ret.mState = ModelArgumentInfo::MEMORY;
-    ret.mLocationAndLength = {
-            .poolIndex = poolIndex, .offset = offset, .length = rawLength, .padding = padding};
+    ret.mLocationAndLength = {.poolIndex = poolIndex, .offset = offset, .length = length};
     ret.mBuffer = nullptr;
     return {ANEURALNETWORKS_NO_ERROR, ret};
 }
@@ -113,56 +95,36 @@ std::pair<int, ModelArgumentInfo> ModelArgumentInfo::createFromMemory(
 int ModelArgumentInfo::updateDimensionInfo(const Operand& operand,
                                            const ANeuralNetworksOperandType* newType) {
     if (newType == nullptr) {
-        mInitialDimensions = operand.dimensions;
+        mDimensions = operand.dimensions;
     } else {
         const uint32_t count = newType->dimensionCount;
-        mInitialDimensions = std::vector<uint32_t>(count);
-        std::copy(&newType->dimensions[0], &newType->dimensions[count], mInitialDimensions.begin());
+        mDimensions = hidl_vec<uint32_t>(count);
+        std::copy(&newType->dimensions[0], &newType->dimensions[count], mDimensions.begin());
     }
-    mDimensions = mInitialDimensions;
     return ANEURALNETWORKS_NO_ERROR;
 }
 
-Request::Argument ModelArgumentInfo::createRequestArgument() const {
-    switch (mState) {
-        case ModelArgumentInfo::POINTER: {
-            Request::Argument arg = {.lifetime = Request::Argument::LifeTime::POINTER,
-                                     .location = mLocationAndLength,
-                                     .dimensions = mDimensions};
-            arg.location.pointer = mBuffer;
-            return arg;
-        }
-        case ModelArgumentInfo::MEMORY:
-            return {.lifetime = Request::Argument::LifeTime::POOL,
-                    .location = mLocationAndLength,
-                    .dimensions = mDimensions};
-        case ModelArgumentInfo::HAS_NO_VALUE:
-            return {.lifetime = Request::Argument::LifeTime::NO_VALUE};
-        case ModelArgumentInfo::UNSPECIFIED:
-            LOG(FATAL) << "Invalid state: UNSPECIFIED";
-            return {};
-    };
-    LOG(FATAL) << "Invalid state: " << mState;
-    return {};
-}
-
-std::vector<Request::Argument> createRequestArguments(
+hidl_vec<RequestArgument> createRequestArguments(
         const std::vector<ModelArgumentInfo>& argumentInfos,
         const std::vector<DataLocation>& ptrArgsLocations) {
     const size_t count = argumentInfos.size();
-    std::vector<Request::Argument> ioInfos(count);
+    hidl_vec<RequestArgument> ioInfos(count);
     uint32_t ptrArgsIndex = 0;
     for (size_t i = 0; i < count; i++) {
         const auto& info = argumentInfos[i];
         switch (info.state()) {
             case ModelArgumentInfo::POINTER:
-                ioInfos[i] = {.lifetime = Request::Argument::LifeTime::POOL,
+                ioInfos[i] = {.hasNoValue = false,
                               .location = ptrArgsLocations[ptrArgsIndex++],
                               .dimensions = info.dimensions()};
                 break;
             case ModelArgumentInfo::MEMORY:
+                ioInfos[i] = {.hasNoValue = false,
+                              .location = info.locationAndLength(),
+                              .dimensions = info.dimensions()};
+                break;
             case ModelArgumentInfo::HAS_NO_VALUE:
-                ioInfos[i] = info.createRequestArgument();
+                ioInfos[i] = {.hasNoValue = true};
                 break;
             default:
                 CHECK(false);

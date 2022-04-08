@@ -20,6 +20,7 @@
 #include <cmath>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "IndexedShapeWrapper.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
@@ -28,6 +29,8 @@
 namespace android {
 namespace nn {
 namespace elu {
+
+using namespace hal;
 
 constexpr uint32_t kNumInputs = 2;
 constexpr uint32_t kInputTensor = 0;
@@ -52,21 +55,19 @@ bool eluFloat(const T* inputData, const Shape& inputShape, const T alpha, T* out
 
 }  // namespace
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT16 || inputType == OperandType::TENSOR_FLOAT32) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     } else {
         NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation ELU";
     }
     auto scalarType =
             inputType == OperandType::TENSOR_FLOAT16 ? OperandType::FLOAT16 : OperandType::FLOAT32;
-    NN_RET_CHECK(validateInputTypes(context, {inputType, scalarType}));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, {inputType, scalarType}) &&
+           validateOutputTypes(context, {inputType});
 }
 
 bool prepare(IOperationExecutionContext* context) {

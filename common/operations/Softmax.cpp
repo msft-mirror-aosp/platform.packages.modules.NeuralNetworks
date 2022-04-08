@@ -16,21 +16,17 @@
 
 #define LOG_TAG "Operations"
 
-#include <algorithm>
-#include <cfloat>
-#include <limits>
-#include <vector>
-
-#include "OperationResolver.h"
-#include "Tracing.h"
-#include "nnapi/Validation.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
 
+#include <algorithm>
+#include <limits>
+#include <vector>
+
 #include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
+#include "HalInterfaces.h"
+#include "OperationResolver.h"
+#include "Tracing.h"
 
 namespace android {
 namespace nn {
@@ -47,8 +43,9 @@ constexpr uint32_t kAxisScalar = 2;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 inline bool softmaxSlowFloat32(const float* inputData, const Shape& inputShape, const float beta,
                                int32_t axis, float* outputData, const Shape& outputShape) {
@@ -230,23 +227,21 @@ bool softmaxQuant8(const T* inputData, const Shape& inputShape, const float beta
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK(context->getNumInputs() == kNumInputs ||
                  context->getNumInputs() == kNumInputs - 1);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
     std::vector<OperandType> inExpectedTypes;
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT32 || inputType == OperandType::TENSOR_QUANT8_ASYMM) {
-        minSupportedVersion = Version::ANDROID_OC_MR1;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
         inExpectedTypes = {inputType, OperandType::FLOAT32};
     } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         inExpectedTypes = {inputType, OperandType::FLOAT16};
     } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
         inExpectedTypes = {inputType, OperandType::FLOAT32};
     } else {
         NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
@@ -256,19 +251,17 @@ Result<Version> validate(const IOperationValidationContext* context) {
         NN_RET_CHECK_LE(inputRank, 4);
     }
     if (context->getNumInputs() == kNumInputs) {
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         inExpectedTypes.push_back(OperandType::INT32);
     } else {
         if (inputRank != 2 && inputRank != 4 && inputRank != 0) {
-            minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+            NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         }
     }
-    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, inExpectedTypes) &&
+           validateOutputTypes(context, {inputType});
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     float beta = (input.type == OperandType::TENSOR_FLOAT16)
@@ -316,7 +309,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace softmax
 

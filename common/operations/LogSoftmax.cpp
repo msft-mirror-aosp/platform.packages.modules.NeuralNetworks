@@ -16,17 +16,18 @@
 
 #define LOG_TAG "Operations"
 
-#include <algorithm>
-#include <cmath>
-#include <vector>
-
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
 #include "Tracing.h"
 
+#include <cmath>
+
 namespace android {
 namespace nn {
 namespace log_softmax {
+
+using namespace hal;
 
 constexpr char kOperationName[] = "LOG_SOFTMAX";
 
@@ -70,7 +71,7 @@ inline bool compute(const T* input, const Shape& shape, T beta, uint32_t axis, T
     return true;
 }
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     OperandType inputType = context->getInputType(kInputTensor);
@@ -83,11 +84,12 @@ Result<Version> validate(const IOperationValidationContext* context) {
         inExpectedTypes = {OperandType::TENSOR_FLOAT16, OperandType::FLOAT16, OperandType::INT32};
         outExpectedTypes = {OperandType::TENSOR_FLOAT16};
     } else {
-        return NN_ERROR() << "Unsupported input tensor type for operation " << kOperationName;
+        LOG(ERROR) << "Unsupported input tensor type for operation " << kOperationName;
+        return false;
     }
     NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
     NN_RET_CHECK(validateOutputTypes(context, outExpectedTypes));
-    return Version::ANDROID_Q;
+    return validateHalVersion(context, HalVersion::V1_2);
 }
 
 bool prepare(IOperationExecutionContext* context) {

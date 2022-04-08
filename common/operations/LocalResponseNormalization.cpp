@@ -16,17 +16,15 @@
 
 #define LOG_TAG "Operations"
 
+#include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
+
 #include <algorithm>
 #include <vector>
 
+#include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "Tracing.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
-
-#include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
 namespace nn {
@@ -45,8 +43,9 @@ constexpr uint32_t kAxisScalar = 5;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 inline bool localResponseNormFloat32Impl(const float* inputData, const Shape& inputShape,
                                          int32_t radius, float bias, float alpha, float beta,
@@ -88,7 +87,6 @@ bool localResponseNorm<float>(const float* inputData, const Shape& inputShape, i
                               const Shape& outputShape) {
     int32_t ndim = getNumberOfDimensions(inputShape);
     NN_CHECK(handleNegativeAxis(inputShape, &axis));
-    radius = std::min(radius, static_cast<int32_t>(inputShape.dimensions[axis]));
     // TFLite optimized implementation only supports computation along the last axis
     if (axis == ndim - 1) {
         NNTRACE_COMP("optimized_ops::LocalResponseNormalization::float");
@@ -134,9 +132,8 @@ bool executeTyped(IOperationExecutionContext* context) {
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK(context->getNumInputs() == kNumInputs ||
                  context->getNumInputs() == kNumInputs - 1);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
@@ -144,16 +141,15 @@ Result<Version> validate(const IOperationValidationContext* context) {
     const OperandType inputType = context->getInputType(kInputTensor);
     std::vector<OperandType> inExpectedTypes;
     std::vector<OperandType> outExpectedTypes;
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT32) {
-        minSupportedVersion = Version::ANDROID_OC_MR1;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
         inExpectedTypes = {
                 OperandType::TENSOR_FLOAT32, OperandType::INT32,   OperandType::FLOAT32,
                 OperandType::FLOAT32,        OperandType::FLOAT32,
         };
         outExpectedTypes = {OperandType::TENSOR_FLOAT32};
     } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         inExpectedTypes = {
                 OperandType::TENSOR_FLOAT16, OperandType::INT32,   OperandType::FLOAT16,
                 OperandType::FLOAT16,        OperandType::FLOAT16,
@@ -165,21 +161,19 @@ Result<Version> validate(const IOperationValidationContext* context) {
 
     if (context->getNumInputs() == kNumInputs) {
         inExpectedTypes.push_back(OperandType::INT32);
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     } else if (context->getInputShape(kInputTensor).dimensions.size() != 4) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     }
 
     const Shape& input = context->getInputShape(kInputTensor);
     if (hasKnownRank(input)) {
         NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
     }
-    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, inExpectedTypes) &&
+           validateOutputTypes(context, {inputType});
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     const Shape& input = context->getInputShape(kInputTensor);
     int32_t numDimensions = getNumberOfDimensions(input);
@@ -189,8 +183,6 @@ bool prepare(IOperationExecutionContext* context) {
     NN_RET_CHECK_LE(numDimensions, 4);
     NN_RET_CHECK_GE(axis, -numDimensions);
     NN_RET_CHECK_LT(axis, numDimensions);
-    const int32_t radius = context->getInputValue<int32_t>(kRadiusScalar);
-    NN_RET_CHECK_GE(radius, 0);
     return context->setOutputShape(kOutputTensor, input);
 }
 
@@ -204,7 +196,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace local_response_norm
 

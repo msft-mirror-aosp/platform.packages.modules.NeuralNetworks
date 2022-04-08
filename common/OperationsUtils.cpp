@@ -24,13 +24,15 @@
 #include <sstream>
 #include <vector>
 
-#include "LegacyUtils.h"
 #include "Operations.h"
+#include "Utils.h"
 
 namespace android {
 namespace nn {
 
 namespace {
+
+using namespace hal;
 
 bool validateOperandTypes(const std::vector<OperandType>& expectedTypes, const char* tag,
                           uint32_t operandCount,
@@ -39,8 +41,8 @@ bool validateOperandTypes(const std::vector<OperandType>& expectedTypes, const c
     for (uint32_t i = 0; i < operandCount; ++i) {
         OperandType type = getOperandType(i);
         NN_RET_CHECK(type == expectedTypes[i])
-                << "Invalid " << tag << " tensor type " << type << " for " << tag << " " << i
-                << ", expected " << expectedTypes[i];
+                << "Invalid " << tag << " tensor type " << toString(type) << " for " << tag << " "
+                << i << ", expected " << toString(expectedTypes[i]);
     }
     return true;
 }
@@ -86,26 +88,26 @@ bool validateOutputTypes(const IOperationValidationContext* context,
             [context](uint32_t index) { return context->getOutputType(index); });
 }
 
-bool validateVersion(const IOperationValidationContext* context, Version contextVersion,
-                     Version minSupportedVersion) {
-    if (contextVersion < minSupportedVersion) {
+bool validateHalVersion(const IOperationValidationContext* context,
+                        HalVersion minSupportedHalVersion) {
+    if (context->getHalVersion() < minSupportedHalVersion) {
         std::ostringstream message;
         message << "Operation " << context->getOperationName() << " with inputs {";
         for (uint32_t i = 0, n = context->getNumInputs(); i < n; ++i) {
             if (i != 0) {
                 message << ", ";
             }
-            message << context->getInputType(i);
+            message << toString(context->getInputType(i));
         }
         message << "} and outputs {";
         for (uint32_t i = 0, n = context->getNumOutputs(); i < n; ++i) {
             if (i != 0) {
                 message << ", ";
             }
-            message << context->getOutputType(i);
+            message << toString(context->getOutputType(i));
         }
-        message << "} is only supported since " << minSupportedVersion << " (validating using "
-                << contextVersion << ")";
+        message << "} is only supported since " << toString(minSupportedHalVersion)
+                << " (validating using " << toString(context->getHalVersion()) << ")";
         NN_RET_CHECK_FAIL() << message.str();
     }
     return true;
@@ -354,7 +356,7 @@ bool calculateBroadcastedShape(const Shape& in1, const Shape& in2, Shape* out) {
         if (dim1 != dim2 && dim1 != 1 && dim2 != 1) {
             LOG(ERROR) << "Dimensions mismatch for broadcast:\n"
                        << "First tensor: dimension " << numberOfDims1 - i << " of size " << dim1
-                       << "\nSecond tensor: dimension " << numberOfDims2 - i << " of size " << dim2;
+                       << "\nSecond tensor: dimension " << numberOfDims2 - i << "of size " << dim2;
             return false;
         }
         out->dimensions[maxDims - i] = (dim1 == 1) ? dim2 : dim1;
@@ -461,7 +463,9 @@ bool embeddingLookupPrepare(const Shape& valueShape, const Shape& lookupShape, S
     NN_OPS_CHECK(getNumberOfDimensions(valueShape) >= 2);
     NN_OPS_CHECK(getNumberOfDimensions(lookupShape) == 1);
 
+    const uint32_t rows = getSizeOfDimension(valueShape, 0);
     const uint32_t columns = getSizeOfDimension(valueShape, 1);
+
     const uint32_t lookups = getSizeOfDimension(lookupShape, 0);
 
     outputShape->type = valueShape.type;
@@ -482,6 +486,8 @@ bool hashtableLookupPrepare(const Shape& lookupShape, const Shape& keyShape,
     NN_OPS_CHECK(getNumberOfDimensions(valueShape) >= 1);
 
     const uint32_t lookups = getSizeOfDimension(lookupShape, 0);
+    const uint32_t keys = getSizeOfDimension(keyShape, 0);
+    const uint32_t rows = getSizeOfDimension(valueShape, 0);
     outputShape->type = valueShape.type;
     outputShape->dimensions = {lookups};
     for (uint32_t i = 1; i < getNumberOfDimensions(valueShape); i++) {

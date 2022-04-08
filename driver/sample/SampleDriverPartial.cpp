@@ -18,37 +18,40 @@
 
 #include "SampleDriverPartial.h"
 
-#include <HalInterfaces.h>
-#include <Utils.h>
-#include <ValidateHal.h>
 #include <android-base/logging.h>
+#include <hidl/LegacySupport.h>
 
 #include <thread>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "SampleDriverUtils.h"
+#include "Utils.h"
+#include "ValidateHal.h"
 
 namespace android {
 namespace nn {
 namespace sample_driver {
 
-hardware::Return<void> SampleDriverPartial::getSupportedOperations_1_3(
-        const V1_3::Model& model, getSupportedOperations_1_3_cb cb) {
+using namespace hal;
+
+Return<void> SampleDriverPartial::getSupportedOperations_1_3(const V1_3::Model& model,
+                                                             getSupportedOperations_1_3_cb cb) {
     VLOG(DRIVER) << "getSupportedOperations()";
     if (validateModel(model)) {
         std::vector<bool> supported = getSupportedOperationsImpl(model);
-        cb(V1_3::ErrorStatus::NONE, supported);
+        cb(ErrorStatus::NONE, supported);
     } else {
         std::vector<bool> supported;
-        cb(V1_3::ErrorStatus::INVALID_ARGUMENT, supported);
+        cb(ErrorStatus::INVALID_ARGUMENT, supported);
     }
-    return hardware::Void();
+    return Void();
 }
 
-hardware::Return<V1_3::ErrorStatus> SampleDriverPartial::prepareModel_1_3(
-        const V1_3::Model& model, V1_1::ExecutionPreference preference, V1_3::Priority priority,
-        const V1_3::OptionalTimePoint& deadline, const hardware::hidl_vec<hardware::hidl_handle>&,
-        const hardware::hidl_vec<hardware::hidl_handle>&, const HalCacheToken&,
+Return<ErrorStatus> SampleDriverPartial::prepareModel_1_3(
+        const V1_3::Model& model, ExecutionPreference preference, Priority priority,
+        const OptionalTimePoint& deadline, const hidl_vec<hidl_handle>&,
+        const hidl_vec<hidl_handle>&, const CacheToken&,
         const sp<V1_3::IPreparedModelCallback>& callback) {
     std::vector<bool> supported = getSupportedOperationsImpl(model);
     bool isModelFullySupported =

@@ -45,9 +45,6 @@ std::string Logger::getElapsedTime() {
     return oss.str();
 }
 
-bool LoggerStream::mWriteAbortMessageToSystemLog = false;
-std::string LoggerStream::mLogTag;
-
 }  // namespace fuzzing_test
 }  // namespace nn
 }  // namespace android

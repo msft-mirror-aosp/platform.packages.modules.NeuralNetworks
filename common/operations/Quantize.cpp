@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
+#include "OperationsUtils.h"
 #define LOG_TAG "Operations"
+
+#include "HalInterfaces.h"
+#include "IndexedShapeWrapper.h"
+#include "OperationResolver.h"
+#include "Tracing.h"
 
 #include <algorithm>
 #include <cmath>
-
-#include "IndexedShapeWrapper.h"
-#include "OperationResolver.h"
-#include "OperationsUtils.h"
-#include "Tracing.h"
 
 namespace android {
 namespace nn {
@@ -35,6 +36,8 @@ constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
 namespace {
+
+using namespace hal;
 
 template <typename T>
 bool quantizeToQuant8(const T* inputData, uint8_t* outputData, const Shape& outputShape) {
@@ -63,7 +66,7 @@ bool quantizeToQuant8Signed(const T* inputData, int8_t* outputData, const Shape&
 
 }  // namespace
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
 
@@ -72,14 +75,14 @@ Result<Version> validate(const IOperationValidationContext* context) {
 
     NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
                  inputType == OperandType::TENSOR_FLOAT32)
-            << "Unsupported input operand type for QUANTIZE op: " << inputType;
+            << "Unsupported input operand type for QUANTIZE op: " << toString(inputType);
     NN_RET_CHECK(outputType == OperandType::TENSOR_QUANT8_ASYMM ||
                  outputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
-            << "Unsupported output operand type for QUANTIZE op: " << outputType;
+            << "Unsupported output operand type for QUANTIZE op: " << toString(outputType);
     if (outputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
+        return validateHalVersion(context, HalVersion::V1_3);
     } else {
-        return Version::ANDROID_Q;
+        return validateHalVersion(context, HalVersion::V1_2);
     }
 }
 
@@ -118,7 +121,8 @@ bool execute(IOperationExecutionContext* context) {
         }
     }
     NN_RET_CHECK_FAIL() << "Unsupported tensor types combination for QUANTIZE op. (input type: "
-                        << inputType << " output type: " << context->getOutputType(kOutputTensor)
+                        << toString(inputType)
+                        << " output type: " << toString(context->getOutputType(kOutputTensor))
                         << ")";
 }
 

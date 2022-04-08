@@ -1,18 +1,8 @@
 {
-  "mainline-presubmit": [
-    {
-      "name": "CtsNNAPITestCases[com.google.android.neuralnetworks.apex]"
-    }
-  ],
   "presubmit": [
     {
-      "name": "NeuralNetworksTest_utils"
+      "name": "CtsNNAPITestCases"
     },
-    {
-      "name": "CtsNNAPIJavaTestCases"
-    }
-  ],
-  "presubmit-large": [
     {
       "name": "NeuralNetworksTest_static",
       "options": [
@@ -21,16 +11,17 @@
           // pass consisting of:
           // * useCpuOnly = 0
           // * computeMode = ComputeMode::ASYNC
+          // * allowSyncExecHal = 1
           //
-          // The value here is a bitmask indicating only "pass 2"
-          // should be run (4 = 2^2). The bit conversions can be
+          // The value here is a bitmask indicating only "pass 10"
+          // should be run (1024 = 2^10). The bit conversions can be
           // found in packages/modules/NeuralNetworks/runtime/test/TestMain.cpp.
-          "native-test-flag": "4"
+          "native-test-flag": "1024"
         }
       ]
     },
     {
-      "name": "CtsNNAPITestCases"
+      "name": "NeuralNetworksTest_utils"
     }
   ],
   "imports": [

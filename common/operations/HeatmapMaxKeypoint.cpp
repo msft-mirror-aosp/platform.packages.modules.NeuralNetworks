@@ -21,13 +21,11 @@
 #include <cmath>
 #include <vector>
 
+#include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
 #include "Tracing.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
 namespace nn {
@@ -44,8 +42,9 @@ constexpr uint32_t kNumOutputs = 2;
 constexpr uint32_t kOutputScoreTensor = 0;
 constexpr uint32_t kOutputKeypointTensor = 1;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 // This function uses Taylor expansion up to the quatratic term to approximate bicubic
 // upscaling result.
@@ -227,15 +226,14 @@ inline bool heatmapMaxKeypointQuant(const int8_t* heatmap, const Shape& heatmapS
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     std::vector<OperandType> inExpectedTypes;
     std::vector<OperandType> outExpectedTypes;
     auto inputType = context->getInputType(kHeatmapTensor);
-    auto minSupportedVersion = Version::ANDROID_Q;
+    auto minSupportedHalVersion = HalVersion::V1_2;
     if (inputType == OperandType::TENSOR_FLOAT32 || inputType == OperandType::TENSOR_FLOAT16) {
         inExpectedTypes = {inputType, inputType, OperandType::BOOL};
         outExpectedTypes = {inputType, inputType};
@@ -248,16 +246,16 @@ Result<Version> validate(const IOperationValidationContext* context) {
                            OperandType::TENSOR_QUANT16_ASYMM, OperandType::BOOL};
         outExpectedTypes = {OperandType::TENSOR_QUANT8_ASYMM_SIGNED,
                             OperandType::TENSOR_QUANT16_ASYMM};
-        minSupportedVersion = Version::ANDROID_R;
+        minSupportedHalVersion = HalVersion::V1_3;
     } else {
-        return NN_ERROR() << "Unsupported input tensor type for operation " << kOperationName;
+        LOG(ERROR) << "Unsupported input tensor type for operation " << kOperationName;
+        return false;
     }
     NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
     NN_RET_CHECK(validateOutputTypes(context, outExpectedTypes));
-    return minSupportedVersion;
+    return validateHalVersion(context, minSupportedHalVersion);
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     bool layout = context->getInputValue<bool>(kLayoutScalar);
     Shape heatmapShape = context->getInputShape(kHeatmapTensor);
@@ -361,7 +359,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace heatmap_max_keypoint
 

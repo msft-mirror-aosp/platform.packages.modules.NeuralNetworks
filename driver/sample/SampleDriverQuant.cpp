@@ -16,59 +16,62 @@
 
 #define LOG_TAG "SampleDriverQuant"
 
-#include <HalInterfaces.h>
-#include <Utils.h>
 #include <android-base/logging.h>
 #include <hidl/LegacySupport.h>
 
 #include <thread>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "SampleDriverPartial.h"
+#include "Utils.h"
+#include "ValidateHal.h"
 
 namespace android {
 namespace nn {
 namespace sample_driver {
 
+using namespace hal;
+
 class SampleDriverQuant : public SampleDriverPartial {
    public:
     SampleDriverQuant() : SampleDriverPartial("nnapi-sample_quant") {}
-    hardware::Return<void> getCapabilities_1_3(getCapabilities_1_3_cb cb) override;
+    Return<void> getCapabilities_1_3(getCapabilities_1_3_cb cb) override;
 
    private:
     std::vector<bool> getSupportedOperationsImpl(const V1_3::Model& model) const override;
 };
 
-hardware::Return<void> SampleDriverQuant::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
+Return<void> SampleDriverQuant::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
     android::nn::initVLogMask();
     VLOG(DRIVER) << "getCapabilities()";
 
-    V1_3::Capabilities capabilities = {
+    Capabilities capabilities = {
             .relaxedFloat32toFloat16PerformanceScalar = {.execTime = 50.0f, .powerUsage = 1.0f},
             .relaxedFloat32toFloat16PerformanceTensor = {.execTime = 50.0f, .powerUsage = 1.0f},
             .operandPerformance = nonExtensionOperandPerformance<HalVersion::V1_3>({50.0f, 1.0f}),
             .ifPerformance = {.execTime = 50.0f, .powerUsage = 1.0f},
             .whilePerformance = {.execTime = 50.0f, .powerUsage = 1.0f}};
 
-    cb(V1_3::ErrorStatus::NONE, capabilities);
-    return hardware::Void();
+    cb(ErrorStatus::NONE, capabilities);
+    return Void();
 }
 
-static bool isQuantized(V1_3::OperandType opType) {
-    return opType == V1_3::OperandType::TENSOR_QUANT8_ASYMM ||
-           opType == V1_3::OperandType::TENSOR_QUANT8_ASYMM_SIGNED;
+static bool isQuantized(OperandType opType) {
+    return opType == OperandType::TENSOR_QUANT8_ASYMM ||
+           opType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED;
 }
 
 std::vector<bool> SampleDriverQuant::getSupportedOperationsImpl(const V1_3::Model& model) const {
     const size_t count = model.main.operations.size();
     std::vector<bool> supported(count);
     for (size_t i = 0; i < count; i++) {
-        const V1_3::Operation& operation = model.main.operations[i];
-        if (!isExtensionOperationType(operation.type) && operation.inputs.size() > 0) {
-            const V1_3::Operand& firstOperand = model.main.operands[operation.inputs[0]];
+        const Operation& operation = model.main.operations[i];
+        if (operation.inputs.size() > 0) {
+            const Operand& firstOperand = model.main.operands[operation.inputs[0]];
             supported[i] = isQuantized(firstOperand.type);
-            if (operation.type == V1_3::OperationType::SELECT) {
-                const V1_3::Operand& secondOperand = model.main.operands[operation.inputs[1]];
+            if (operation.type == OperationType::SELECT) {
+                const Operand& secondOperand = model.main.operands[operation.inputs[1]];
                 supported[i] = isQuantized(secondOperand.type);
             }
         }

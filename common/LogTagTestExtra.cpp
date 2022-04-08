@@ -16,7 +16,7 @@
 
 #define LOG_TAG "SecondFileTag"
 
-#include "LegacyUtils.h"
+#include "Utils.h"
 
 namespace log_tag_test {
 

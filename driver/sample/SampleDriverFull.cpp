@@ -18,44 +18,42 @@
 
 #include "SampleDriverFull.h"
 
-#include <Utils.h>
-#include <ValidateHal.h>
-
 #include <vector>
+
+#include "Utils.h"
+#include "ValidateHal.h"
 
 namespace android {
 namespace nn {
 namespace sample_driver {
 
-hardware::Return<void> SampleDriverFull::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
+using namespace hal;
+
+Return<void> SampleDriverFull::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
     android::nn::initVLogMask();
     VLOG(DRIVER) << "getCapabilities_1_3()";
-    V1_3::Capabilities capabilities = {
+    Capabilities capabilities = {
             .relaxedFloat32toFloat16PerformanceScalar = mPerf,
             .relaxedFloat32toFloat16PerformanceTensor = mPerf,
             .operandPerformance = nonExtensionOperandPerformance<HalVersion::V1_3>(mPerf),
             .ifPerformance = mPerf,
             .whilePerformance = mPerf};
-    cb(V1_3::ErrorStatus::NONE, capabilities);
-    return hardware::Void();
+    cb(ErrorStatus::NONE, capabilities);
+    return Void();
 }
 
-hardware::Return<void> SampleDriverFull::getSupportedOperations_1_3(
-        const V1_3::Model& model, getSupportedOperations_1_3_cb cb) {
+Return<void> SampleDriverFull::getSupportedOperations_1_3(const V1_3::Model& model,
+                                                          getSupportedOperations_1_3_cb cb) {
     VLOG(DRIVER) << "getSupportedOperations_1_3()";
     if (validateModel(model)) {
         const size_t count = model.main.operations.size();
         std::vector<bool> supported(count, true);
-        for (size_t i = 0; i < count; i++) {
-            const V1_3::Operation& operation = model.main.operations[i];
-            supported[i] = !isExtensionOperationType(operation.type);
-        }
-        cb(V1_3::ErrorStatus::NONE, supported);
+        cb(ErrorStatus::NONE, supported);
     } else {
         std::vector<bool> supported;
-        cb(V1_3::ErrorStatus::INVALID_ARGUMENT, supported);
+        cb(ErrorStatus::INVALID_ARGUMENT, supported);
     }
-    return hardware::Void();
+    return Void();
 }
 
 }  // namespace sample_driver

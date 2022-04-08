@@ -16,46 +16,49 @@
 
 #define LOG_TAG "SampleDriverFloatSlow"
 
-#include <HalInterfaces.h>
-#include <Utils.h>
 #include <android-base/logging.h>
 #include <hidl/LegacySupport.h>
 
 #include <thread>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "SampleDriverPartial.h"
+#include "Utils.h"
+#include "ValidateHal.h"
 
 namespace android {
 namespace nn {
 namespace sample_driver {
 
+using namespace hal;
+
 class SampleDriverFloatSlow : public SampleDriverPartial {
    public:
     SampleDriverFloatSlow() : SampleDriverPartial("nnapi-sample_float_slow") {}
-    hardware::Return<void> getCapabilities_1_3(getCapabilities_1_3_cb cb) override;
+    Return<void> getCapabilities_1_3(getCapabilities_1_3_cb cb) override;
 
    private:
     std::vector<bool> getSupportedOperationsImpl(const V1_3::Model& model) const override;
 };
 
-hardware::Return<void> SampleDriverFloatSlow::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
+Return<void> SampleDriverFloatSlow::getCapabilities_1_3(getCapabilities_1_3_cb cb) {
     android::nn::initVLogMask();
     VLOG(DRIVER) << "getCapabilities()";
 
-    V1_3::Capabilities capabilities = {
+    Capabilities capabilities = {
             .relaxedFloat32toFloat16PerformanceScalar = {.execTime = 1.2f, .powerUsage = 0.6f},
             .relaxedFloat32toFloat16PerformanceTensor = {.execTime = 1.2f, .powerUsage = 0.6f},
             .operandPerformance = nonExtensionOperandPerformance<HalVersion::V1_3>({1.0f, 1.0f}),
             .ifPerformance = {.execTime = 1.0f, .powerUsage = 1.0f},
             .whilePerformance = {.execTime = 1.0f, .powerUsage = 1.0f}};
-    update(&capabilities.operandPerformance, V1_3::OperandType::TENSOR_FLOAT32,
+    update(&capabilities.operandPerformance, OperandType::TENSOR_FLOAT32,
            {.execTime = 1.3f, .powerUsage = 0.7f});
-    update(&capabilities.operandPerformance, V1_3::OperandType::FLOAT32,
+    update(&capabilities.operandPerformance, OperandType::FLOAT32,
            {.execTime = 1.3f, .powerUsage = 0.7f});
 
-    cb(V1_3::ErrorStatus::NONE, capabilities);
-    return hardware::Void();
+    cb(ErrorStatus::NONE, capabilities);
+    return Void();
 }
 
 std::vector<bool> SampleDriverFloatSlow::getSupportedOperationsImpl(
@@ -63,10 +66,10 @@ std::vector<bool> SampleDriverFloatSlow::getSupportedOperationsImpl(
     const size_t count = model.main.operations.size();
     std::vector<bool> supported(count);
     for (size_t i = 0; i < count; i++) {
-        const V1_3::Operation& operation = model.main.operations[i];
-        if (!isExtensionOperationType(operation.type) && operation.inputs.size() > 0) {
-            const V1_3::Operand& firstOperand = model.main.operands[operation.inputs[0]];
-            supported[i] = firstOperand.type == V1_3::OperandType::TENSOR_FLOAT32;
+        const Operation& operation = model.main.operations[i];
+        if (operation.inputs.size() > 0) {
+            const Operand& firstOperand = model.main.operands[operation.inputs[0]];
+            supported[i] = firstOperand.type == OperandType::TENSOR_FLOAT32;
         }
     }
     return supported;

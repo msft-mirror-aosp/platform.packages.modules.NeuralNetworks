@@ -16,6 +16,7 @@
 
 #define LOG_TAG "Operations"
 
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
 #include "Tracing.h"
@@ -35,6 +36,8 @@ constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
 namespace {
+
+using namespace hal;
 
 template <typename T>
 inline bool eval(const T* inputData, const Shape& inputShape, int32_t axis,
@@ -59,7 +62,7 @@ inline bool eval(const T* inputData, const Shape& inputShape, int32_t axis,
 
 }  // namespace
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     OperandType inputType = context->getInputType(kInputTensor);
@@ -73,9 +76,9 @@ Result<Version> validate(const IOperationValidationContext* context) {
                                     {inputType, OperandType::INT32, OperandType::TENSOR_INT32}));
     NN_RET_CHECK(validateOutputTypes(context, {inputType}));
     if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        return Version::ANDROID_R;
+        return validateHalVersion(context, HalVersion::V1_3);
     } else {
-        return Version::ANDROID_Q;
+        return validateHalVersion(context, HalVersion::V1_2);
     }
 }
 

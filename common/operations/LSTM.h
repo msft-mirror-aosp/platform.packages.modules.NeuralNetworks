@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "ActivationFunctor.h"
-#include "nnapi/Types.h"
+#include "HalInterfaces.h"
 
 namespace android {
 namespace nn {
@@ -48,9 +48,9 @@ struct Shape;
 
 class LSTMCell {
    public:
-    LSTMCell(const Operation& operation, RunTimeOperandInfo* operands);
+    LSTMCell(const hal::Operation& operation, RunTimeOperandInfo* operands);
 
-    bool Prepare(const Operation& operation, RunTimeOperandInfo* operands, Shape* scratchShape,
+    bool Prepare(const hal::Operation& operation, RunTimeOperandInfo* operands, Shape* scratchShape,
                  Shape* outputStateShape, Shape* cellStateShape, Shape* outputShape);
     bool Eval();
 

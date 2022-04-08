@@ -18,19 +18,14 @@
 
 #include "BurstBuilder.h"
 
-#include <nnapi/IBurst.h>
-
-#include <memory>
-#include <utility>
-#include <vector>
-
 #include "CompilationBuilder.h"
+#include "ExecutionBurstController.h"
 
 namespace android {
 namespace nn {
 
 BurstBuilder::BurstBuilder(const CompilationBuilder* compilation,
-                           std::vector<SharedBurst> burstControllers)
+                           std::vector<std::shared_ptr<ExecutionBurstController>> burstControllers)
     : mCompilation(compilation), mBurstControllers(std::move(burstControllers)) {}
 
 bool BurstBuilder::tryLock() {
@@ -46,7 +41,7 @@ const CompilationBuilder* BurstBuilder::getCompilation() const {
     return mCompilation;
 }
 
-SharedBurst BurstBuilder::getControllerAt(size_t index) const {
+std::shared_ptr<ExecutionBurstController> BurstBuilder::getControllerAt(size_t index) const {
     return index < mBurstControllers.size() ? mBurstControllers[index] : nullptr;
 }
 

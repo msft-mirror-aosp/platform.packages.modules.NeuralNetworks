@@ -16,27 +16,27 @@
 
 #define LOG_TAG "Operations"
 
-#include <algorithm>
-#include <limits>
-#include <vector>
-
-#include "ActivationFunctor.h"
-#include "OperationResolver.h"
-#include "OperationsUtils.h"
-#include "Tracing.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/optimized/optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/logistic.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/tanh.h>
 #include <tensorflow/lite/kernels/internal/reference/reference_ops.h>
 
+#include <algorithm>
+#include <limits>
+#include <vector>
+
+#include "ActivationFunctor.h"
 #include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
+#include "HalInterfaces.h"
+#include "OperationResolver.h"
+#include "OperationsUtils.h"
+#include "Tracing.h"
 
 namespace android {
 namespace nn {
+
+using namespace hal;
 
 namespace activation {
 
@@ -46,7 +46,6 @@ constexpr uint32_t kInputTensor = 0;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 template <typename T>
@@ -275,8 +274,7 @@ bool tanhQuant8Signed(const int8_t* inputData, const Shape& inputShape, int8_t* 
 
     NNTRACE_COMP_SWITCH("reference_integer_ops::Tanh");
     tflite::reference_integer_ops::Tanh(inputShape.offset, input_range_radius, input_multiplier,
-                                        input_left_shift, convertShapeToTflshape(inputShape),
-                                        inputData, convertShapeToTflshape(outputShape), outputData);
+                                        input_left_shift, numElements, inputData, outputData);
 
     return true;
 }
@@ -357,55 +355,47 @@ bool hardSwishQuant(const T* inputData, const Shape& inputShape, T* outputData,
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(OperationType opType, const IOperationValidationContext* context) {
+bool validate(OperationType opType, const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT32) {
-        minSupportedVersion = Version::ANDROID_OC_MR1;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
     } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM) {
         if (opType == OperationType::TANH) {
-            minSupportedVersion = Version::ANDROID_Q;
+            NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         } else {
-            minSupportedVersion = Version::ANDROID_OC_MR1;
+            NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
         }
     } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     } else {
-        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << opType;
+        NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << getOperationName(opType);
     }
     const Shape& input = context->getInputShape(kInputTensor);
     if (hasKnownRank(input)) {
         NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
     }
-    NN_RET_CHECK(validateInputTypes(context, {inputType}));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, {inputType}) && validateOutputTypes(context, {inputType});
 }
 
-Result<Version> validateHardSwish(const IOperationValidationContext* context) {
+bool validateHardSwish(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT16 || inputType == OperandType::TENSOR_FLOAT32 ||
         inputType == OperandType::TENSOR_QUANT8_ASYMM ||
         inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     } else {
         NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation ELU";
     }
-    NN_RET_CHECK(validateInputTypes(context, {inputType}));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, {inputType}) && validateOutputTypes(context, {inputType});
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(OperationType opType, IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     if (opType != OperationType::HARD_SWISH) {
@@ -623,7 +613,6 @@ bool executeHardSwish(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation TANH";
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace activation
 

@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "nnapi/Types.h"
+#include "HalInterfaces.h"
 
 namespace android {
 namespace nn {
@@ -28,7 +28,7 @@ struct RunTimeOperandInfo;
 
 class EmbeddingLookup {
    public:
-    EmbeddingLookup(const Operation& operation, RunTimeOperandInfo* operands);
+    EmbeddingLookup(const hal::Operation& operation, RunTimeOperandInfo* operands);
 
     bool Eval();
 

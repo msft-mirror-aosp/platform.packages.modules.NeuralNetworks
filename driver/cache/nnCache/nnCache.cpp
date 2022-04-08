@@ -16,14 +16,14 @@
 
 #include "nnCache.h"
 
-#include <fcntl.h>
 #include <inttypes.h>
-#include <log/log.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include <thread>
+
+#include <log/log.h>
 
 // Cache file header
 static const char* cacheFileMagic = "nn$$";
@@ -243,7 +243,7 @@ void NNCache::loadBlobCacheLocked() {
             return;
         }
 
-        // Validity check the size before trying to mmap it.
+        // Sanity check the size before trying to mmap it.
         size_t fileSize = statBuf.st_size;
         if (fileSize > mMaxTotalSize * 2) {
             ALOGE("cache file is too large: %#" PRIx64, static_cast<off64_t>(statBuf.st_size));

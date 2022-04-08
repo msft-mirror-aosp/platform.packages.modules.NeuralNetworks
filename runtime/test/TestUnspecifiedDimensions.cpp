@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
+#include "TestNeuralNetworksWrapper.h"
+
+#include <sys/mman.h>
+#include <tuple>
+#include <vector>
+
 #include <android-base/macros.h>
 #include <android/sharedmem.h>
 #include <gtest/gtest.h>
-#include <sys/mman.h>
-
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-
-#include "TestNeuralNetworksWrapper.h"
 
 using namespace android::nn::test_wrapper;
 
@@ -89,27 +86,26 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     enum class BufferSize { LESS, EQUAL, MORE };    // only used for output buffer size
     enum class OperandLocation { BUFFER, MEMORY };  // where the operand reside
     enum class InOutType { INPUT, OUTPUT };         // parameter for setInOut()
-    // Whether input/output padding is implicitly disabled, enabled, or explicitly disabled
-    enum class PaddingEnabled { DEFAULT, ENABLED, DISABLED };
 
     class SharedMemoryForTest {
        public:
-        SharedMemoryForTest() : memory(nullptr), fd(-1), buffer(nullptr) {}
+        SharedMemoryForTest() : memory(nullptr), fd(-1), buffer(nullptr), length(0) {}
         ~SharedMemoryForTest() {
             if (buffer != nullptr) {
-                munmap(buffer, kLength);
+                munmap(buffer, length);
             }
             if (fd > -1) {
                 close(fd);
             }
         }
         void initialize(size_t size, const void* data) {
-            fd = ASharedMemory_create(nullptr, kLength);
+            length = size;
+            fd = ASharedMemory_create(nullptr, size);
             ASSERT_GT(fd, -1);
-            buffer = (uint8_t*)mmap(nullptr, kLength, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+            buffer = (uint8_t*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             ASSERT_NE(buffer, nullptr);
             memcpy(buffer, data, size);
-            memory = std::make_shared<Memory>(kLength, PROT_READ | PROT_WRITE, fd, 0);
+            memory = std::make_shared<Memory>(size, PROT_READ | PROT_WRITE, fd, 0);
             ASSERT_TRUE(memory->isValid());
         }
         const Memory* getMemory() const { return memory.get(); }
@@ -120,8 +116,7 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
         std::shared_ptr<Memory> memory;
         int fd;
         uint8_t* buffer;
-        // Always allocate an ashmem of 64 bytes. This is large enough for all use cases.
-        static constexpr size_t kLength = 64;
+        size_t length;
     };
 
     std::string toString(SpecificationLevel level) {
@@ -163,19 +158,6 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
         }
     }
 
-    std::string toString(PaddingEnabled enabled) {
-        switch (enabled) {
-            case PaddingEnabled::DEFAULT:
-                return "DEFAULT";
-            case PaddingEnabled::ENABLED:
-                return "ENABLED";
-            case PaddingEnabled::DISABLED:
-                return "DISABLED";
-            default:
-                return "UNKNOWN";
-        }
-    }
-
    protected:
     virtual void SetUp() {
         uint32_t modelIndex, executionIndex;
@@ -185,9 +167,6 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
                 executionIndex = kIndex0_Execution;
                 mBadIndexChoices = {kIndexCount, modelIndex, executionIndex};
                 mOperandLocationChoices = {OperandLocation::BUFFER, OperandLocation::MEMORY};
-                mBufferSizeChoices = {BufferSize::LESS, BufferSize::EQUAL, BufferSize::MORE};
-                mEnablePaddingChoices = {PaddingEnabled::DEFAULT, PaddingEnabled::ENABLED,
-                                         PaddingEnabled::DISABLED};
                 break;
             case UnspecifiedOperand::CONST_MANDATORY:
                 modelIndex = kIndex1_Model;
@@ -220,8 +199,6 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
                 mBadIndexChoices = {kIndexCount, modelIndex, executionIndex};
                 mOperandLocationChoices = {OperandLocation::BUFFER, OperandLocation::MEMORY};
                 mBufferSizeChoices = {BufferSize::LESS, BufferSize::EQUAL, BufferSize::MORE};
-                mEnablePaddingChoices = {PaddingEnabled::DEFAULT, PaddingEnabled::ENABLED,
-                                         PaddingEnabled::DISABLED};
                 break;
             default:
                 break;
@@ -363,20 +340,13 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
             // Phase 3: Set Execution Input/Output
             Execution execution(&compilation);
 
-            // Enable padding
-            if (mEnablePadding == PaddingEnabled::ENABLED) {
-                ASSERT_EQ(execution.enableInputAndOutputPadding(true), Result::NO_ERROR);
-            } else if (mEnablePadding == PaddingEnabled::DISABLED) {
-                ASSERT_EQ(execution.enableInputAndOutputPadding(false), Result::NO_ERROR);
-            }
-
             // Set input0
             Result result;
             T bufferOp0[6] = {1, 2, 3, 4, 5, 6};
             SharedMemoryForTest memoryOp0;
             memoryOp0.initialize(sizeof(bufferOp0), bufferOp0);
             result = setInOut<T>(&execution, kIndex0_Execution, 0, {kValueA, valueB}, bufferOp0,
-                                 &memoryOp0, InOutType::INPUT, mBufferSize);
+                                 &memoryOp0, InOutType::INPUT);
             ASSERT_EQ(result, expectSetInput0());
             if (result != Result::NO_ERROR) continue;
 
@@ -393,7 +363,7 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
             SharedMemoryForTest memoryOp4;
             memoryOp4.initialize(sizeof(bufferOp4), bufferOp4);
             result = setInOut<T>(&execution, kIndex4_Execution, 0, {valueB, kValueA}, bufferOp4,
-                                 &memoryOp4, InOutType::OUTPUT, mBufferSize);
+                                 &memoryOp4, InOutType::OUTPUT, mOutputBufferSize);
             ASSERT_EQ(result, expectSetOutput0());
             if (result != Result::NO_ERROR) continue;
 
@@ -434,8 +404,6 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     // - the provided type is not fully specified
     // - the provided type does not agree with the type set at model construction time
     // - no type is provided and the type is not fully specified at model construction time
-    // - the buffer size (length) is less than needed
-    // - the buffer size (length) is more than needed and padding is not enabled
     Result expectSetInput0() {
         const auto kLevel0_Model = mSpecificationLevels[kIndex0_Model];
         const auto kLevel0_Execution = mSpecificationLevels[kIndex0_Execution];
@@ -448,28 +416,11 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
                     kLevel0_Model != SpecificationLevel::UNSPECIFIED_RANK) {
                     return Result::BAD_DATA;
                 }
-                if (mBufferSize == BufferSize::LESS) {
-                    return Result::BAD_DATA;
-                }
-                if (mEnablePadding != PaddingEnabled::ENABLED && mBufferSize == BufferSize::MORE) {
-                    return Result::BAD_DATA;
-                }
                 break;
             case SpecificationLevel::UNSPECIFIED_TYPE:
                 if (kLevel0_Model == SpecificationLevel::UNSPECIFIED_DIM ||
-                    kLevel0_Model == SpecificationLevel::UNSPECIFIED_RANK) {
-                    return Result::BAD_DATA;
-                }
-                if (mBufferSize == BufferSize::LESS) {
-                    return Result::BAD_DATA;
-                }
-                if (mEnablePadding != PaddingEnabled::ENABLED && mBufferSize == BufferSize::MORE) {
-                    return Result::BAD_DATA;
-                }
-                // This is the case when the dimension is incorrectly specified in the model.
-                // With incorrect dimension, the needed size is 2 * 3 = 6 data type size.
-                // BufferSize::EQUAL (2 * 2 = 4 data type size) cannot provide enough length.
-                if (mBadIndex == kIndex0_Model && mBufferSize == BufferSize::EQUAL) {
+                    kLevel0_Model == SpecificationLevel::UNSPECIFIED_RANK ||
+                    mBadIndex == kIndex0_Model) {
                     return Result::BAD_DATA;
                 }
                 break;
@@ -504,8 +455,7 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     // Expect BAD_DATA on output0 for the following cases
     // - the provided type is less detailed as the type set at model construction time
     // - the provided type does not agree with the type set at model construction time
-    // - the buffer size (length) is less than needed
-    // - the buffer size (length) is more than needed and padding is not enabled
+    // - the buffer size does not agree with a fully specified type
     Result expectSetOutput0() {
         const auto kLevel4_Model = mSpecificationLevels[kIndex4_Model];
         const auto kLevel4_Execution = mSpecificationLevels[kIndex4_Execution];
@@ -523,32 +473,17 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
                 }
                 break;
             case SpecificationLevel::FULLY_SPECIFIED:
-                if ((mBadIndex == kIndex4_Model || mBadIndex == kIndex4_Execution) &&
-                    kLevel4_Model != SpecificationLevel::UNSPECIFIED_RANK) {
-                    return Result::BAD_DATA;
-                }
-                if (mBufferSize == BufferSize::LESS) {
-                    return Result::BAD_DATA;
-                }
-                if (mEnablePadding != PaddingEnabled::ENABLED && mBufferSize == BufferSize::MORE) {
+                if (((mBadIndex == kIndex4_Model || mBadIndex == kIndex4_Execution) &&
+                     kLevel4_Model != SpecificationLevel::UNSPECIFIED_RANK) ||
+                    mOutputBufferSize != BufferSize::EQUAL) {
                     return Result::BAD_DATA;
                 }
                 break;
             case SpecificationLevel::UNSPECIFIED_TYPE:
-                if (kLevel4_Model == SpecificationLevel::FULLY_SPECIFIED) {
-                    if (mBufferSize == BufferSize::LESS) {
-                        return Result::BAD_DATA;
-                    }
-                    if (mEnablePadding != PaddingEnabled::ENABLED &&
-                        mBufferSize == BufferSize::MORE) {
-                        return Result::BAD_DATA;
-                    }
-                    // This is the case when the dimension is incorrectly specified in the model.
-                    // With incorrect dimension, the needed size is 2 * 3 = 6 data type size.
-                    // BufferSize::EQUAL (2 * 2 = 4 data type size) cannot provide enough length.
-                    if (mBadIndex == kIndex4_Model && mBufferSize == BufferSize::EQUAL) {
-                        return Result::BAD_DATA;
-                    }
+                if (kLevel4_Model == SpecificationLevel::FULLY_SPECIFIED &&
+                    (mOutputBufferSize != BufferSize::EQUAL || mBadIndex == kIndex4_Model ||
+                     mBadIndex == kIndex4_Execution)) {
+                    return Result::BAD_DATA;
                 }
                 break;
             default:
@@ -563,7 +498,7 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     Result expectCompute() {
         if (mBadIndex < 8) {
             return Result::OP_FAILED;
-        } else if (mBufferSize == BufferSize::LESS) {
+        } else if (mOutputBufferSize == BufferSize::LESS) {
             return Result::OUTPUT_INSUFFICIENT_SIZE;
         }
         return Result::NO_ERROR;
@@ -572,8 +507,7 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     // Iterate over combinations of
     // - mBadIndexChoices: which operand has incorrect dimension
     // - mOperandLocationChoices: where the operand reside, buffer or shared memory
-    // - mBufferSizeChoices: whether the provided buffer/memory size is sufficient
-    // - mEnablePaddingChoices: whether input/output memory padding is enabled
+    // - mBufferSizeChoices: whether the provided output buffer/memory size is sufficient
     template <typename T, Type TensorType>
     void TestAll() {
         SCOPED_TRACE("Model: " + toString(kSpecificationLevelModel));
@@ -581,8 +515,8 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
         mOperandTypes = {TensorType, TensorType, TensorType,         Type::TENSOR_INT32,
                          TensorType, TensorType, Type::TENSOR_INT32, TensorType};
         for (const auto kBadIndex : mBadIndexChoices) {
-            mBadIndex = kBadIndex;
             SCOPED_TRACE("Bad Index: " + std::to_string(mBadIndex));
+            mBadIndex = kBadIndex;
             if (mBadIndex < 8 &&
                 (mSpecificationLevels[mBadIndex] == SpecificationLevel::UNSPECIFIED_RANK ||
                  mSpecificationLevels[mBadIndex] == SpecificationLevel::UNSPECIFIED_TYPE)) {
@@ -591,14 +525,10 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
             for (const auto kOperandLocation : mOperandLocationChoices) {
                 mOperandLocation = kOperandLocation;
                 SCOPED_TRACE("Operand Location: " + toString(mOperandLocation));
-                for (const auto kBufferSize : mBufferSizeChoices) {
-                    mBufferSize = kBufferSize;
-                    SCOPED_TRACE("Buffer Size: " + toString(mBufferSize));
-                    for (const auto kEnablePadding : mEnablePaddingChoices) {
-                        mEnablePadding = kEnablePadding;
-                        SCOPED_TRACE("Enable Padding: " + toString(mEnablePadding));
-                        TestOne<T, TensorType>();
-                    }
+                for (const auto kOutputBufferSize : mBufferSizeChoices) {
+                    mOutputBufferSize = kOutputBufferSize;
+                    SCOPED_TRACE("Output Buffer Size: " + toString(mOutputBufferSize));
+                    TestOne<T, TensorType>();
                 }
             }
         }
@@ -616,12 +546,10 @@ class UnspecifiedDimensionsTest : public ::testing::TestWithParam<UnspecifiedDim
     std::vector<uint32_t> mBadIndexChoices;
     std::vector<OperandLocation> mOperandLocationChoices;
     std::vector<BufferSize> mBufferSizeChoices = {BufferSize::EQUAL};
-    std::vector<PaddingEnabled> mEnablePaddingChoices = {PaddingEnabled::DEFAULT};
 
     uint32_t mBadIndex;
     OperandLocation mOperandLocation;
-    BufferSize mBufferSize;
-    PaddingEnabled mEnablePadding;
+    BufferSize mOutputBufferSize;
 };
 
 TEST_P(UnspecifiedDimensionsTest, Float32) {
@@ -644,31 +572,31 @@ static const auto kAllSpecificationLevelsExecution =
                         SpecificationLevel::UNSPECIFIED_RANK, SpecificationLevel::UNSPECIFIED_TYPE);
 static const auto kFullySpecified = testing::Values(SpecificationLevel::FULLY_SPECIFIED);
 
-INSTANTIATE_TEST_SUITE_P(ModelInputTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::INPUT_MANDATORY),
-                                          kAllSpecificationLevelsModel,
-                                          kAllSpecificationLevelsExecution));
+INSTANTIATE_TEST_CASE_P(ModelInputTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::INPUT_MANDATORY),
+                                         kAllSpecificationLevelsModel,
+                                         kAllSpecificationLevelsExecution));
 
-INSTANTIATE_TEST_SUITE_P(ConstantParameterTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::CONST_MANDATORY),
-                                          kAllSpecificationLevelsModel, kFullySpecified));
+INSTANTIATE_TEST_CASE_P(ConstantParameterTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::CONST_MANDATORY),
+                                         kAllSpecificationLevelsModel, kFullySpecified));
 
-INSTANTIATE_TEST_SUITE_P(TemporaryVariableTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::TEMPORARY_VARIABLE),
-                                          kAllSpecificationLevelsModel, kFullySpecified));
+INSTANTIATE_TEST_CASE_P(TemporaryVariableTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::TEMPORARY_VARIABLE),
+                                         kAllSpecificationLevelsModel, kFullySpecified));
 
-INSTANTIATE_TEST_SUITE_P(OptionalConstantTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::CONST_OPTIONAL),
-                                          kAllSpecificationLevelsModel, kFullySpecified));
+INSTANTIATE_TEST_CASE_P(OptionalConstantTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::CONST_OPTIONAL),
+                                         kAllSpecificationLevelsModel, kFullySpecified));
 
-INSTANTIATE_TEST_SUITE_P(OptionalInputTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::INPUT_OPTIONAL),
-                                          kAllSpecificationLevelsModel,
-                                          kAllSpecificationLevelsExecution));
+INSTANTIATE_TEST_CASE_P(OptionalInputTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::INPUT_OPTIONAL),
+                                         kAllSpecificationLevelsModel,
+                                         kAllSpecificationLevelsExecution));
 
-INSTANTIATE_TEST_SUITE_P(ModelOutputTest, UnspecifiedDimensionsTest,
-                         testing::Combine(testing::Values(UnspecifiedOperand::OUTPUT),
-                                          kAllSpecificationLevelsModel,
-                                          kAllSpecificationLevelsExecution));
+INSTANTIATE_TEST_CASE_P(ModelOutputTest, UnspecifiedDimensionsTest,
+                        testing::Combine(testing::Values(UnspecifiedOperand::OUTPUT),
+                                         kAllSpecificationLevelsModel,
+                                         kAllSpecificationLevelsExecution));
 
 }  // end namespace

@@ -20,9 +20,9 @@
 #include <utility>
 #include <vector>
 
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "RNN.h"
-#include "nnapi/TypeUtils.h"
 
 namespace android {
 namespace nn {
@@ -42,8 +42,9 @@ constexpr uint32_t kNumOutputsWithState = 2;
 constexpr uint32_t kOutputTensor = 0;
 constexpr uint32_t kStateOutputTensor = 1;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 template <typename T>
 void transposeFirstTwoDims(const T* input, const Shape& inputShape, T* output) {
@@ -126,30 +127,29 @@ bool executeTyped(IOperationExecutionContext* context) {
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     const int numOutputs = context->getNumOutputs();
     NN_RET_CHECK(numOutputs == kNumOutputs || numOutputs == kNumOutputsWithState);
     OperandType inputType = context->getInputType(kInputTensor);
     if (inputType != OperandType::TENSOR_FLOAT16 && inputType != OperandType::TENSOR_FLOAT32) {
-        return NN_ERROR() << "Unsupported input operand type for UNIDIRECTIONAL_SEQUENCE_RNN op: "
-                          << inputType;
+        LOG(ERROR) << "Unsupported input operand type for UNIDIRECTIONAL_SEQUENCE_RNN op: "
+                   << toString(inputType);
+        return false;
     }
     NN_RET_CHECK(validateInputTypes(context, {inputType, inputType, inputType, inputType, inputType,
                                               OperandType::INT32, OperandType::INT32}));
     std::vector<OperandType> outputTypes = {inputType};
-    Version minVersionSupported = Version::ANDROID_Q;
+    HalVersion minHalVersionSupported = HalVersion::V1_2;
     if (numOutputs == kNumOutputsWithState) {
-        minVersionSupported = Version::ANDROID_R;
+        minHalVersionSupported = HalVersion::V1_3;
         outputTypes.push_back(inputType);
     }
     NN_RET_CHECK(validateOutputTypes(context, outputTypes));
-    return minVersionSupported;
+    return validateHalVersion(context, minHalVersionSupported);
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     Shape weights = context->getInputShape(kWeightsTensor);
@@ -205,7 +205,6 @@ bool execute(IOperationExecutionContext* context) {
     }
     return true;
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace unidirectional_sequence_rnn
 

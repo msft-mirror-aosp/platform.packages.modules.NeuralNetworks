@@ -170,7 +170,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal() {
                             .scale = 0.084f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 127
-                        }, { // placeholder
+                        }, { // dummy
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({127}),
                             .dimensions = {1},
@@ -200,7 +200,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal() {
                             .scale = 0.05f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 0
-                        }, { // placeholder1
+                        }, { // dummy1
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({0}),
                             .dimensions = {1},
@@ -230,7 +230,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal() {
                             .scale = 0.089f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 123
-                        }, { // placeholder2
+                        }, { // dummy2
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({123}),
                             .dimensions = {1},
@@ -260,7 +260,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal() {
                             .scale = 0.029f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 0
-                        }, { // placeholder3
+                        }, { // dummy3
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({0}),
                             .dimensions = {1},
@@ -480,7 +480,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal_2() {
                             .scale = 0.084f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 127
-                        }, { // placeholder4
+                        }, { // dummy4
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({127}),
                             .dimensions = {1},
@@ -510,7 +510,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal_2() {
                             .scale = 0.05f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 0
-                        }, { // placeholder5
+                        }, { // dummy5
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({0}),
                             .dimensions = {1},
@@ -540,7 +540,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal_2() {
                             .scale = 0.089f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 123
-                        }, { // placeholder6
+                        }, { // dummy6
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({123}),
                             .dimensions = {1},
@@ -570,7 +570,7 @@ const TestModel& get_test_model_quant8_all_inputs_as_internal_2() {
                             .scale = 0.029f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 0
-                        }, { // placeholder7
+                        }, { // dummy7
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({0}),
                             .dimensions = {1},

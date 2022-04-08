@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "ActivationFunctor.h"
-#include "nnapi/Types.h"
+#include "HalInterfaces.h"
 
 namespace android {
 namespace nn {
@@ -30,9 +30,9 @@ struct Shape;
 
 class RNN {
    public:
-    RNN(const Operation& operation, RunTimeOperandInfo* operands);
+    RNN(const hal::Operation& operation, RunTimeOperandInfo* operands);
 
-    static bool Prepare(const Operation& operation, RunTimeOperandInfo* operands,
+    static bool Prepare(const hal::Operation& operation, RunTimeOperandInfo* operands,
                         Shape* hiddenStateShape, Shape* outputShape);
     bool Eval();
 

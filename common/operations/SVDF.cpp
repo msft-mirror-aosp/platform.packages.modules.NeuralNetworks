@@ -18,15 +18,17 @@
 
 #include "SVDF.h"
 
-#include <algorithm>
-#include <vector>
-
 #include "CpuExecutor.h"
 #include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
+
+#include <vector>
 #include "Tracing.h"
 
 namespace android {
 namespace nn {
+
+using namespace hal;
 
 SVDF::SVDF(const Operation& operation, RunTimeOperandInfo* operands) {
     NNTRACE_TRANS("SVDF::SVDF");
@@ -180,48 +182,54 @@ void SVDF::EvalFloat32(const float* inputData, const float* inputStateData, cons
             state_ptr[memory_size - 1] = 0.0;
         }
     }
-
-    // Clear scratch (the matmul is accumulative).
-    float scratch[batch_size * num_filters];
-    std::fill_n(scratch, batch_size * num_filters, 0.0f);
+    // The state left most column is used to save current cycle activation. This
+    // is achieved by starting at state->data.f[memory_size - 1] and having the
+    // stride equal to memory_size.
     tflite::tensor_utils::MatrixBatchVectorMultiplyAccumulate(
-            weightsFeatureData, num_filters, input_size, inputData, batch_size, scratch);
+            weightsFeatureData, num_filters, input_size, inputData, batch_size,
+            &outputStateData[memory_size - 1], memory_size);
 
-    // Copy the latest activation from scratch into activation_state:
-    // The last, i.e. (memory_size-1)th entry for each batch, and filter.
-    for (int i = 0; i < batch_size * num_filters; ++i) {
-        outputStateData[i * memory_size + memory_size - 1] = scratch[i];
-    }
-
-    // Begin ApplyTimeWeightsBiasAndActivation
     // Compute matmul(state, weights_time).
+    // The right most column is used to save temporary output (with the size of
+    // num_filters). This is achieved by starting at state->data.f and having the
+    // stride equal to memory_size.
+    float scratch[batch_size * num_filters];
     for (int b = 0; b < batch_size; b++) {
         float* state_out_ptr_batch = outputStateData + b * memory_size * num_filters;
         float* scratch_ptr_batch = scratch + b * num_filters;
         tflite::tensor_utils::BatchVectorBatchVectorDotProduct(
-                weightsTimeData, state_out_ptr_batch, memory_size, num_filters, scratch_ptr_batch);
+                weightsTimeData, state_out_ptr_batch, memory_size, num_filters, scratch_ptr_batch,
+                /*result_stride=*/1);
+    }
+
+    // Initialize output with bias if provided.
+    if (!IsNullInput(bias_)) {
+        tflite::tensor_utils::VectorBatchVectorAssign(biasData, num_units, batch_size, outputData);
+    } else {
+        std::fill_n(outputData, batch_size * num_units, 0.0f);
     }
 
     // Reduction sum
-    tflite::tensor_utils::ReductionSumVector(scratch, outputData, batch_size * num_units, rank);
-
-    // Add bias if provided.
-    if (!IsNullInput(bias_)) {
-        tflite::tensor_utils::VectorBatchVectorAdd(biasData, num_units, batch_size, outputData);
+    for (int b = 0; b < batch_size; b++) {
+        float* output_ptr_batch = outputData + b * num_units;
+        float* scratch_ptr_batch = scratch + b * num_filters;
+        tflite::tensor_utils::ReductionSumVector(scratch_ptr_batch, output_ptr_batch, num_units,
+                                                 rank);
     }
 
     // Apply activation.
-    tflite::tensor_utils::ApplyActivationToVector(outputData, batch_size * num_units,
-                                                  params_.activation_, outputData);
-    // Finished ApplyTimeWeightsBiasAndActivation
+    for (int b = 0; b < batch_size; b++) {
+        float* output_ptr_batch = outputData + b * num_units;
+        tflite::tensor_utils::ApplyActivationToVector(output_ptr_batch, num_units,
+                                                      params_.activation_, output_ptr_batch);
+    }
 
     // Right shift the state.
     for (int b = 0; b < batch_size; b++) {
         float* state_out_ptr_batch = outputStateData + b * memory_size * num_filters;
         for (int f = 0; f < num_filters; f++) {
-            std::copy(state_out_ptr_batch + 1, state_out_ptr_batch + memory_size,
-                      state_out_ptr_batch);
-            state_out_ptr_batch[memory_size - 1] = 0.0;
+            tflite::tensor_utils::VectorShiftLeft<float>(state_out_ptr_batch, memory_size,
+                                                         /*shift_value=*/0.0);
             state_out_ptr_batch += memory_size;
         }
     }

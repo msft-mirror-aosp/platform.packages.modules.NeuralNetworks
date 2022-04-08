@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <vector>
+#include "RNN.h"
 
 #include "NeuralNetworksWrapper.h"
-#include "RNN.h"
+
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
 
 namespace android {
 namespace nn {

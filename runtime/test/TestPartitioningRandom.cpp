@@ -14,13 +14,7 @@
  * limitations under the License.
  */
 
-#include <HalInterfaces.h>
-#include <SampleDriver.h>
-#include <ValidateHal.h>
 #include <android-base/logging.h>
-#include <android/hardware/neuralnetworks/1.0/ADevice.h>
-#include <android/hardware/neuralnetworks/1.1/ADevice.h>
-#include <android/hardware/neuralnetworks/1.2/ADevice.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
 
@@ -38,22 +32,19 @@
 #include <vector>
 
 #include "CompilationBuilder.h"
-#include "HalUtils.h"
+#include "HalInterfaces.h"
 #include "Manager.h"
 #include "ModelBuilder.h"
 #include "NeuralNetworks.h"
+#include "SampleDriver.h"
 #include "TestNeuralNetworksWrapper.h"
+#include "Utils.h"
+#include "ValidateHal.h"
 
 // Uncomment the following line to generate some debugging output that
 // may be useful when analyzing failures:
 //
 // #define VERBOSE VERBOSE
-
-// Uncomment the following line to generate some debugging output that
-// may be useful to determine test coverage for support of dynamic
-// temporaries (http://b/132458982):
-//
-// #define TRACE_DYNTEMP TRACE_DYNTEMP
 
 // We randomly generate tests (model + input data) at runtime, and verify
 // that we get the same results whether we do partitioned compilation/execution
@@ -98,20 +89,13 @@
 
 namespace android {
 
-namespace V1_0 = ::android::hardware::neuralnetworks::V1_0;
-namespace V1_1 = ::android::hardware::neuralnetworks::V1_1;
-namespace V1_2 = ::android::hardware::neuralnetworks::V1_2;
-namespace V1_3 = ::android::hardware::neuralnetworks::V1_3;
+using namespace nn::hal;
 using CompilationBuilder = nn::CompilationBuilder;
-using DeviceManager = nn::DeviceManager;
 using Device = nn::Device;
-using SharedDevice = nn::SharedDevice;
+using DeviceManager = nn::DeviceManager;
 using ExecutionPlan = nn::ExecutionPlan;
-using ExecutionStep = nn::ExecutionStep;
-using HalCacheToken = nn::HalCacheToken;
 using HalVersion = nn::HalVersion;
 using HidlModel = V1_3::Model;
-using LogicalStep = nn::LogicalStep;
 using ModelBuilder = nn::ModelBuilder;
 using Result = nn::test_wrapper::Result;
 using SampleDriver = nn::sample_driver::SampleDriver;
@@ -236,7 +220,7 @@ class TestCompilation : public WrapperCompilation {
     using WrapperCompilation::finish;
 
     Result setPartitioning(uint32_t partitioning) {
-        return static_cast<Result>(builder()->forTest_setPartitioning(partitioning));
+        return static_cast<Result>(builder()->setPartitioning(partitioning));
     }
 
     const ExecutionPlan& getExecutionPlan() const { return builder()->forTest_getExecutionPlan(); }
@@ -324,7 +308,7 @@ class TestMemories {
     // region offset within memory, region length.
     std::vector<std::tuple<unsigned, uint32_t, uint32_t>> mRegions;
 
-    // For validity checking.
+    // For sanity checking.
     bool mLayoutDone = false;
 };
 
@@ -345,11 +329,11 @@ class RandomPartitioningTest : public ::testing::TestWithParam<unsigned> {
    public:
     RandomPartitioningTest() : mRandNumEng(GetParam() /* seed */), mRandNumUnitDist(0.0, 1.0) {}
 
-    static Signature getSignature(const HidlModel& model, const V1_3::Operation& operation);
+    static Signature getSignature(const HidlModel& model, const Operation& operation);
 
    protected:
-    static SharedDevice makeTestDriver(HalVersion version, const char* name,
-                                       std::set<Signature> signatures);
+    static V1_0::IDevice* makeTestDriver(HalVersion version, const char* name,
+                                         std::set<Signature> signatures);
 
     static HalVersion getMinHalVersion(ANeuralNetworksOperationType type);
 
@@ -510,8 +494,7 @@ HalVersion RandomPartitioningTest::getMinHalVersion(ANeuralNetworksOperationType
     return kOperationToVersion.at(type);
 }
 
-Signature RandomPartitioningTest::getSignature(const HidlModel& model,
-                                               const V1_3::Operation& operation) {
+Signature RandomPartitioningTest::getSignature(const HidlModel& model, const Operation& operation) {
     static const auto kOperationToActivation = [] {
         std::map<ANeuralNetworksOperationType, int> result;
         for (const auto& pattern : kOperationPatterns) {
@@ -527,10 +510,9 @@ Signature RandomPartitioningTest::getSignature(const HidlModel& model,
         return Signature(operationType, -1);
     }
 
-    const V1_3::Operand& operand =
-            model.main.operands[operation.inputs[activationFunctionInputIndex]];
-    CHECK(operand.lifetime == V1_3::OperandLifeTime::CONSTANT_COPY);
-    CHECK(operand.type == V1_3::OperandType::INT32);
+    const Operand& operand = model.main.operands[operation.inputs[activationFunctionInputIndex]];
+    CHECK(operand.lifetime == OperandLifeTime::CONSTANT_COPY);
+    CHECK(operand.type == OperandType::INT32);
     int32_t value;
     memcpy(&value, &model.operandValues[operand.location.offset], operand.location.length);
     return Signature(operationType, value);
@@ -558,21 +540,21 @@ class TestDriver : public SampleDriver {
     TestDriver(const char* name, std::set<Signature> signatures)
         : SampleDriver(name), mSignatures(std::move(signatures)) {}
 
-    hardware::Return<void> getCapabilities_1_3(getCapabilities_1_3_cb _hidl_cb) override {
+    Return<void> getCapabilities_1_3(getCapabilities_1_3_cb _hidl_cb) override {
         android::nn::initVLogMask();
-        const V1_0::PerformanceInfo kPerf = {.execTime = 0.75f, .powerUsage = 0.75f};
-        V1_3::Capabilities capabilities = {
+        const PerformanceInfo kPerf = {.execTime = 0.75f, .powerUsage = 0.75f};
+        Capabilities capabilities = {
                 .relaxedFloat32toFloat16PerformanceScalar = kPerf,
                 .relaxedFloat32toFloat16PerformanceTensor = kPerf,
                 .operandPerformance = nn::nonExtensionOperandPerformance<HalVersion::V1_3>(kPerf),
                 .ifPerformance = kPerf,
                 .whilePerformance = kPerf};
         _hidl_cb(V1_3::ErrorStatus::NONE, capabilities);
-        return hardware::Void();
+        return Void();
     }
 
-    hardware::Return<void> getSupportedOperations_1_3(const HidlModel& model,
-                                                      getSupportedOperations_1_3_cb cb) override {
+    Return<void> getSupportedOperations_1_3(const HidlModel& model,
+                                            getSupportedOperations_1_3_cb cb) override {
         if (nn::validateModel(model)) {
             const size_t count = model.main.operations.size();
             std::vector<bool> supported(count);
@@ -584,20 +566,19 @@ class TestDriver : public SampleDriver {
         } else {
             cb(V1_3::ErrorStatus::INVALID_ARGUMENT, {});
         }
-        return hardware::Void();
+        return Void();
     }
 
-    hardware::Return<V1_3::ErrorStatus> prepareModel_1_3(
-            const HidlModel& model, V1_1::ExecutionPreference preference, V1_3::Priority priority,
-            const V1_3::OptionalTimePoint& deadline,
-            const hardware::hidl_vec<hardware::hidl_handle>& modelCache,
-            const hardware::hidl_vec<hardware::hidl_handle>& dataCache, const HalCacheToken& token,
+    Return<V1_3::ErrorStatus> prepareModel_1_3(
+            const HidlModel& model, ExecutionPreference preference, Priority priority,
+            const OptionalTimePoint& deadline, const hidl_vec<hidl_handle>& modelCache,
+            const hidl_vec<hidl_handle>& dataCache, const CacheToken& token,
             const sp<V1_3::IPreparedModelCallback>& callback) override {
         // NOTE: We verify that all operations in the model are supported.
         V1_3::ErrorStatus outStatus = V1_3::ErrorStatus::INVALID_ARGUMENT;
         auto ret = getSupportedOperations_1_3(
                 model, [&outStatus](V1_3::ErrorStatus inStatus,
-                                    const hardware::hidl_vec<bool>& supportedOperations) {
+                                    const hidl_vec<bool>& supportedOperations) {
                     if (inStatus == V1_3::ErrorStatus::NONE) {
                         if (std::all_of(supportedOperations.begin(), supportedOperations.end(),
                                         [](bool v) { return v; })) {
@@ -618,43 +599,148 @@ class TestDriver : public SampleDriver {
     const std::set<Signature> mSignatures;
 };
 
-class TestDriverV1_2 : public V1_2::ADevice {
+// Like TestDriver, but implementing 1.2
+class TestDriverV1_2 : public V1_2::IDevice {
    public:
     TestDriverV1_2(const char* name, std::set<Signature> signatures)
-        : V1_2::ADevice(new TestDriver(name, std::move(signatures))) {}
+        : mLatestDriver(new TestDriver(name, std::move(signatures))) {}
+    Return<void> getCapabilities_1_2(getCapabilities_1_2_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities_1_2(_hidl_cb);
+    }
+    Return<void> getSupportedOperations_1_2(const V1_2::Model& model,
+                                            getSupportedOperations_1_2_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations_1_2(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel_1_2(
+            const V1_2::Model& model, ExecutionPreference preference,
+            const hidl_vec<hidl_handle>& modelCache, const hidl_vec<hidl_handle>& dataCache,
+            const CacheToken& token,
+            const sp<V1_2::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel_1_2(model, preference, modelCache, dataCache, token,
+                                               actualCallback);
+    }
+    Return<void> getVersionString(getVersionString_cb _hidl_cb) override {
+        return mLatestDriver->getVersionString(_hidl_cb);
+    }
+    Return<void> getType(getType_cb _hidl_cb) override { return mLatestDriver->getType(_hidl_cb); }
+    Return<void> getSupportedExtensions(getSupportedExtensions_cb _hidl_cb) {
+        return mLatestDriver->getSupportedExtensions(_hidl_cb);
+    }
+    Return<void> getNumberOfCacheFilesNeeded(getNumberOfCacheFilesNeeded_cb _hidl_cb) {
+        return mLatestDriver->getNumberOfCacheFilesNeeded(_hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModelFromCache(
+            const hidl_vec<hidl_handle>& modelCache, const hidl_vec<hidl_handle>& dataCache,
+            const CacheToken& token, const sp<V1_2::IPreparedModelCallback>& callback) {
+        return mLatestDriver->prepareModelFromCache(modelCache, dataCache, token, callback);
+    }
+    Return<void> getCapabilities_1_1(getCapabilities_1_1_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities_1_1(_hidl_cb);
+    }
+    Return<void> getSupportedOperations_1_1(const V1_1::Model& model,
+                                            getSupportedOperations_1_1_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations_1_1(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel_1_1(
+            const V1_1::Model& model, ExecutionPreference preference,
+            const sp<V1_0::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel_1_1(model, preference, actualCallback);
+    }
+    Return<DeviceStatus> getStatus() override { return mLatestDriver->getStatus(); }
+    Return<void> getCapabilities(getCapabilities_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities(_hidl_cb);
+    }
+    Return<void> getSupportedOperations(const V1_0::Model& model,
+                                        getSupportedOperations_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel(
+            const V1_0::Model& model,
+            const sp<V1_0::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel(model, actualCallback);
+    }
+
+   private:
+    const sp<V1_3::IDevice> mLatestDriver;
 };
 
-class TestDriverV1_1 : public V1_1::ADevice {
+// Like TestDriver, but implementing 1.1
+class TestDriverV1_1 : public V1_1::IDevice {
    public:
     TestDriverV1_1(const char* name, std::set<Signature> signatures)
-        : V1_1::ADevice(new TestDriver(name, std::move(signatures))) {}
+        : mLatestDriver(new TestDriver(name, std::move(signatures))) {}
+    Return<void> getCapabilities_1_1(getCapabilities_1_1_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities_1_1(_hidl_cb);
+    }
+    Return<void> getSupportedOperations_1_1(const V1_1::Model& model,
+                                            getSupportedOperations_1_1_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations_1_1(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel_1_1(
+            const V1_1::Model& model, ExecutionPreference preference,
+            const sp<V1_0::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel_1_1(model, preference, actualCallback);
+    }
+    Return<DeviceStatus> getStatus() override { return mLatestDriver->getStatus(); }
+    Return<void> getCapabilities(getCapabilities_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities(_hidl_cb);
+    }
+    Return<void> getSupportedOperations(const V1_0::Model& model,
+                                        getSupportedOperations_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel(
+            const V1_0::Model& model,
+            const sp<V1_0::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel(model, actualCallback);
+    }
+
+   private:
+    const sp<V1_3::IDevice> mLatestDriver;
 };
 
-class TestDriverV1_0 : public V1_0::ADevice {
+// Like TestDriver, but implementing 1.0
+class TestDriverV1_0 : public V1_0::IDevice {
    public:
     TestDriverV1_0(const char* name, std::set<Signature> signatures)
-        : V1_0::ADevice(new TestDriver(name, std::move(signatures))) {}
+        : mLatestDriver(new TestDriver(name, std::move(signatures))) {}
+    Return<void> getCapabilities(getCapabilities_cb _hidl_cb) override {
+        return mLatestDriver->getCapabilities(_hidl_cb);
+    }
+    Return<void> getSupportedOperations(const V1_0::Model& model,
+                                        getSupportedOperations_cb _hidl_cb) override {
+        return mLatestDriver->getSupportedOperations(model, _hidl_cb);
+    }
+    Return<V1_0::ErrorStatus> prepareModel(
+            const V1_0::Model& model,
+            const sp<V1_0::IPreparedModelCallback>& actualCallback) override {
+        return mLatestDriver->prepareModel(model, actualCallback);
+    }
+    Return<DeviceStatus> getStatus() override { return mLatestDriver->getStatus(); }
+
+   private:
+    const sp<V1_3::IDevice> mLatestDriver;
 };
 
-SharedDevice RandomPartitioningTest::makeTestDriver(HalVersion version, const char* name,
-                                                    std::set<Signature> signatures) {
+V1_0::IDevice* RandomPartitioningTest::makeTestDriver(HalVersion version, const char* name,
+                                                      std::set<Signature> signatures) {
     switch (version) {
         case HalVersion::V1_0:
-            return nn::makeSharedDevice(name, new TestDriverV1_0(name, std::move(signatures)));
+            return new TestDriverV1_0(name, std::move(signatures));
         case HalVersion::V1_1:
-            return nn::makeSharedDevice(name, new TestDriverV1_1(name, std::move(signatures)));
+            return new TestDriverV1_1(name, std::move(signatures));
         case HalVersion::V1_2:
-            return nn::makeSharedDevice(name, new TestDriverV1_2(name, std::move(signatures)));
+            return new TestDriverV1_2(name, std::move(signatures));
         case HalVersion::V1_3:
-            return nn::makeSharedDevice(name, new TestDriver(name, std::move(signatures)));
+            return new TestDriver(name, std::move(signatures));
         default:
             ADD_FAILURE() << "Unexpected HalVersion " << static_cast<int32_t>(version);
             return nullptr;
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Seed, RandomPartitioningTest,
-                         ::testing::Range(kFirstSeed, kFirstSeed + kNumTestCases));
+INSTANTIATE_TEST_CASE_P(Seed, RandomPartitioningTest,
+                        ::testing::Range(kFirstSeed, kFirstSeed + kNumTestCases));
 
 TEST_P(RandomPartitioningTest, Test) {
     LOG(INFO) << "RandomPartitioningTest: GetParam() = " << GetParam();
@@ -665,14 +751,7 @@ TEST_P(RandomPartitioningTest, Test) {
 
     const unsigned problemSize = 1 + randUInt(kMaxProblemSize);
     const WrapperOperandType problemType(WrapperType::TENSOR_FLOAT32, {problemSize, problemSize});
-    const WrapperOperandType unknownDimensionsTypes[] = {
-            {WrapperType::TENSOR_FLOAT32, {}},
-            {WrapperType::TENSOR_FLOAT32, {0, 0}},
-            {WrapperType::TENSOR_FLOAT32, {0, problemSize}},
-            {WrapperType::TENSOR_FLOAT32, {problemSize, 0}},
-    };
-    const unsigned kUnknownDimensionsTypesCount =
-            sizeof(unknownDimensionsTypes) / sizeof(unknownDimensionsTypes[0]);
+    const WrapperOperandType unknownDimensionsType(WrapperType::TENSOR_FLOAT32, {0, 0});
 
     static const WrapperOperandType activationFunctionType(WrapperType::INT32, {});
 
@@ -693,20 +772,9 @@ TEST_P(RandomPartitioningTest, Test) {
     // joining disjoint subgraphs rather than by forcing a root.
     const bool forceCommonRoot = (randFrac() < 0.75);
 
-    auto computeMode = WrapperExecution::getComputeMode();
-    // We check randFrac() independent of compute mode, because we don't want
-    // the random number sequence to change depending on compute mode: Compute
-    // mode should only affect how we perform the inference, not how we build the
-    // Model, the Compilation, or the Execution.
-    if (randFrac() < 0.5 && computeMode == WrapperExecution::ComputeMode::ASYNC) {
-        computeMode = WrapperExecution::ComputeMode::FENCED;
-    }
-
     TestModel model;
     std::vector<uint32_t> modelInputs;
     std::vector<uint32_t> modelOutputs;
-
-    std::set<uint32_t> operandsWithUnknownDimensions;
 
     // Each region in weights is a problem-sized 2-D TENSOR_FLOAT32.
     TestMemories weights;
@@ -735,10 +803,9 @@ TEST_P(RandomPartitioningTest, Test) {
     // operations).
     unsigned rootOperationCount = 0;
 
-    // Track whether we added operands with unknown dimensions. In this case,
+    // Track if we added operands with unknown dimensions. In this case,
     // partitioned compilation will fail if such an operand is read in a
-    // different partition than it is written, and the partition that does the
-    // writing is scheduled on a pre-HAL 1.2 (pre-Android Q) device.
+    // different partition than it is written.
     bool hasUnknownDimensions = false;
 
     // Generate operations.
@@ -928,30 +995,19 @@ TEST_P(RandomPartitioningTest, Test) {
         // OUTPUTS /////////////////////////////////////////////////////////////////////////////////
 
         std::vector<uint32_t> operationOutputs(operationPattern.mNumOutputs);
-        std::generate(
-                operationOutputs.begin(), operationOutputs.end(),
-                [&operandsWithUnknownDimensions, &model, &problemType, &unknownDimensionsTypes,
-                 &hasUnknownDimensions, allowUnknownDimensions, this] {
-                    // Before the fix for http://b/132458982, 3% unknowns causes
-                    // ~35% of partitionings to fail.  After the fix, 3%
-                    // unknowns causes ~3% of partitionings to fail.  (This is
-                    // determined by removing the fallback code and noting the
-                    // number of failures.)
-                    if (allowUnknownDimensions && randFrac() < 0.03) {
-                        hasUnknownDimensions = true;
-                        uint32_t opndIdx = model.addOperand(
-                                &unknownDimensionsTypes[randUInt(kUnknownDimensionsTypesCount)]);
-                        operandsWithUnknownDimensions.insert(opndIdx);
-                        return opndIdx;
-                    } else {
-                        return model.addOperand(&problemType);
-                    }
-                });
-
-        // TODO(b/174851714): Fix the partitioner and re-enable these tests.
-        if (!operandsWithUnknownDimensions.empty()) {
-            GTEST_SKIP() << "Skipping due to b/174851714";
-        }
+        std::generate(operationOutputs.begin(), operationOutputs.end(),
+                      [&model, &problemType, &unknownDimensionsType, &hasUnknownDimensions,
+                       allowUnknownDimensions, this] {
+                          // 3% unknowns causes ~35% of partitionings to fail
+                          // (determined by commenting out the fallback code,
+                          // running tests and noting number of failures).
+                          if (allowUnknownDimensions && randFrac() < 0.03) {
+                              hasUnknownDimensions = true;
+                              return model.addOperand(&unknownDimensionsType);
+                          } else {
+                              return model.addOperand(&problemType);
+                          }
+                      });
 
         // OPERATION ///////////////////////////////////////////////////////////////////////////////
 
@@ -1034,21 +1090,6 @@ TEST_P(RandomPartitioningTest, Test) {
         const auto& outputs = model.getOperationOutputs(randUInt(model.operationCount()));
         modelOutputs.push_back(outputs[randUInt(outputs.size())]);
     }
-    if (computeMode == WrapperExecution::ComputeMode::FENCED) {
-        if (std::any_of(modelOutputs.begin(), modelOutputs.end(),
-                        [&operandsWithUnknownDimensions](uint32_t opndIdx) {
-                            return operandsWithUnknownDimensions.count(opndIdx) != 0;
-                        })) {
-            // Workaround for http://b/162980246: Fenced execution is documented
-            // as requiring model outputs to have fully specified dimensions,
-            // either from Model or from Execution, but its implementation
-            // requires this to come from Model.  This test only guarantees that
-            // they have fully specified dimensions from Execution.  So in the
-            // case of a Model where some output does not have fully specified
-            // dimensions, perform asynchronous execution instead.
-            computeMode = WrapperExecution::ComputeMode::ASYNC;
-        }
-    }
 
     model.identifyInputsAndOutputs(modelInputs, modelOutputs);
 #ifdef VERBOSE
@@ -1110,119 +1151,43 @@ TEST_P(RandomPartitioningTest, Test) {
                   << std::endl;
 #endif
         auto device = DeviceManager::forTest_makeDriverDevice(
-                makeTestDriver(actualHalVersion, name.c_str(), signaturesForThisDriver));
+                name, makeTestDriver(actualHalVersion, name.c_str(), signaturesForThisDriver));
         devices.push_back(device);
     }
     // CPU fallback device
     devices.push_back(DeviceManager::getCpuDevice());
 
     // Partitioned compilation.
-    //
-    // If a test case has both (a) unknown intermediate operand sizes and
-    // (b) partitions scheduled on pre-HAL 1.2 (pre-Android Q) devices, fallback
-    // is needed if the non-fallback partitioning fails.
-    //
-    // The issue is that prior to HAL 1.2, an output operand must have a known
-    // size provided either in the Model or in the Request; and in the case of
-    // partitioning, an intermediate operand of the original model that becomes
-    // an output operand of a partition won't have a known size provided in the
-    // Request.
-    //
-    // If a test case has a step model with no inputs or no outputs, fallback is needed.
-    // This is because our HAL specification requires a model to have at least one
-    // input and one output.
-    //
-    // If a fallback is needed, we retry the compilation with a fallback and require
-    // the fallback to succeed. Otherwise, we require the partitioning to succeed
-    // without CPU fallback.
+    // For test cases without unknown intermediate operand sizes we require the
+    // partitioning to succeed without CPU fallback. With unknown sizes we
+    // retry with a fallback if the non-fallback partitioning fails and require
+    // the fallback to succeed.
     TestCompilation cNoFallback(&model, devices);
     TestCompilation cWithFallback(&model, devices);
+    TestCompilation* c2 = nullptr;
     ASSERT_EQ(cNoFallback.setPartitioning(DeviceManager::kPartitioningWithoutFallback),
               Result::NO_ERROR);
     auto compilationResult = cNoFallback.finish();
-    const bool fallbackNeededForDynamicTemporaries =
-            compilationResult == Result::OP_FAILED && hasUnknownDimensions &&
-            cNoFallback.getExecutionPlan().hasDynamicTemporaries() &&
-            std::any_of(devices.begin(), devices.end(), [](const std::shared_ptr<Device>& device) {
-                return device->getFeatureLevel() < nn::kHalVersionV1_2ToApi.featureLevel;
-            });
-    const bool fallbackNeededForStepModelWithNoInputsOrNoOutputs =
-            cNoFallback.getExecutionPlan().forTest_hasStepModelWithNoInputsOrNoOutputs();
-    const bool fallbackNeeded = fallbackNeededForDynamicTemporaries ||
-                                fallbackNeededForStepModelWithNoInputsOrNoOutputs;
-    if (fallbackNeeded) {
-        ASSERT_EQ(compilationResult, Result::OP_FAILED);
-
+    if (hasUnknownDimensions && compilationResult == Result::OP_FAILED &&
+        cNoFallback.getExecutionPlan().forTest_hasStepModelOutputsOfUnknownSize()) {
         ASSERT_EQ(cWithFallback.setPartitioning(DeviceManager::kPartitioningWithFallback),
                   Result::NO_ERROR);
-        compilationResult = cWithFallback.finish();
-        ASSERT_EQ(compilationResult, Result::NO_ERROR);
+        ASSERT_EQ(cWithFallback.finish(), Result::NO_ERROR);
         ASSERT_EQ(cWithFallback.getExecutionPlan().forTest_getKind(), ExecutionPlan::Kind::SIMPLE);
         ASSERT_EQ(cWithFallback.getExecutionPlan().forTest_simpleGetDevice(),
                   DeviceManager::getCpuDevice());
+        c2 = &cWithFallback;
     } else {
         ASSERT_EQ(compilationResult, Result::NO_ERROR);
-
-        const ExecutionPlan& plan = cNoFallback.getExecutionPlan();
-        if (signaturesForDriver.size() == 1) {
-            ASSERT_EQ(plan.forTest_getKind(), ExecutionPlan::Kind::SIMPLE);
-            ASSERT_TRUE(plan.forTest_simpleGetDevice() != DeviceManager::getCpuDevice());
-        } else {
-            ASSERT_EQ(plan.forTest_getKind(), ExecutionPlan::Kind::COMPOUND);
-            auto stepToDeviceId = [](const std::shared_ptr<LogicalStep>& step) {
-                return step->executionStep()->getDevice();
-            };
-            std::set<decltype(stepToDeviceId(plan.forTest_compoundGetSteps()[0]))> deviceSet;
-            for (const auto& step : plan.forTest_compoundGetSteps()) {
-                deviceSet.insert(stepToDeviceId(step));
-            }
-            // TODO(b/178517567): Figure out why we sometimes have 1 more
-            // signature than we have devices -- this means that we've scheduled
-            // one or more operations onto the CPU fallback device, which is not
-            // something we ever expect to do.
-            ASSERT_TRUE(deviceSet.size() == signaturesForDriver.size() ||
-                        deviceSet.size() == signaturesForDriver.size() + 1);
-        }
+        c2 = &cNoFallback;
     }
-    TestCompilation& c2 = (fallbackNeeded ? cWithFallback : cNoFallback);
-#ifdef TRACE_DYNTEMP
-    {
-        const ExecutionPlan& plan = c2.getExecutionPlan();
-        const size_t dynamicTemporaryCount = plan.forTest_flatGetDynamicTemporaries().size();
-        std::cout << "TRACE_DYNTEMP: dynamic temporary count = " << dynamicTemporaryCount
-                  << std::endl;
-        if (plan.forTest_getKind() == ExecutionPlan::Kind::COMPOUND) {
-            size_t stepsWithModelOutputsThatAreDownstreamInputs = 0;
-            size_t countOfModelOutputsThatAreDownstreamInputs = 0;
-            for (const auto& step : plan.forTest_compoundGetSteps()) {
-                if (const size_t count = step->executionStep()
-                                                 ->getModelOutputsThatAreDownstreamInputs()
-                                                 .size()) {
-                    ++stepsWithModelOutputsThatAreDownstreamInputs;
-                    countOfModelOutputsThatAreDownstreamInputs += count;
-                }
-            }
-            if (countOfModelOutputsThatAreDownstreamInputs != 0) {
-                std::cout << "TRACE_DYNTEMP: model outputs that are downstream inputs: "
-                          << countOfModelOutputsThatAreDownstreamInputs << " / "
-                          << modelOutputs.size() << ", over "
-                          << stepsWithModelOutputsThatAreDownstreamInputs << " / "
-                          << plan.forTest_compoundGetSteps().size() << " steps" << std::endl;
-                EXPECT_LE(countOfModelOutputsThatAreDownstreamInputs, modelOutputs.size());
-            }
-        } else {
-            EXPECT_EQ(dynamicTemporaryCount, size_t(0))
-                    << "Only COMPOUND plan should have dynamic temporaries";
-        }
-    }
-#endif
 
 #ifdef VERBOSE
     {
         std::cout << "signatures = " << signatures.size() << ", devices = " << devices.size()
                   << std::endl;
         // TODO: When dumping steps, include non-ExecutionSteps.
-        const ExecutionPlan& plan = c2.getExecutionPlan();
+        const ExecutionPlan& plan = c2->getExecutionPlan();
         switch (plan.forTest_getKind()) {
             case ExecutionPlan::Kind::SIMPLE:
                 std::cout << "plan: simple" << std::endl;
@@ -1256,10 +1221,10 @@ TEST_P(RandomPartitioningTest, Test) {
 #endif
 
     // For execution:
-    // - create golden inputs (one long vector) and golden output value
-    //   - golden inputs will be copied to actual inputs before each
+    // - create master inputs (one long vector) and master output value
+    //   - master inputs will be copied to actual inputs before each
     //     of the two executions
-    //   - golden output will be used to fill actual outputs before each
+    //   - master output will be used to fill actual outputs before each
     //     of the two executions
     // - create actual inputs and outputs
     // - first execution (non-partitioned)
@@ -1278,15 +1243,15 @@ TEST_P(RandomPartitioningTest, Test) {
     // versus partitioned execution.  Similarly, execution behavior
     // should not be dependent on the outputs; but we'll initialize the
     // outputs anyway.
-    std::vector<float> goldenInputs(problemSize * problemSize * model.inputCount());
-    std::generate(goldenInputs.begin(), goldenInputs.end(), [this] { return randFrac(); });
+    std::vector<float> masterInputs(problemSize * problemSize * model.inputCount());
+    std::generate(masterInputs.begin(), masterInputs.end(), [this] { return randFrac(); });
 #ifdef VERBOSE
     {
         std::cout << "flat inputs = ";
-        dump(goldenInputs.begin(), goldenInputs.end());
+        dump(masterInputs.begin(), masterInputs.end());
     }
 #endif
-    const float goldenOutput = randFrac();
+    const float masterOutput = randFrac();
 
     // Create the memory for the actual inputs and outputs.
     struct InputOutputDescriptor {
@@ -1336,21 +1301,21 @@ TEST_P(RandomPartitioningTest, Test) {
 
     // Function to set up actual inputs and outputs (initializing them
     // and telling the WrapperExecution about them).
-    auto prepareForExecution = [&model, &ioDescriptors, &ioMemories, &goldenInputs, &goldenOutput,
+    auto prepareForExecution = [&model, &ioDescriptors, &ioMemories, &masterInputs, &masterOutput,
                                 problemSize, &problemType](WrapperExecution* e) {
         uint32_t inputIndex = 0, outputIndex = 0;
         for (auto& desc : ioDescriptors) {
             if (desc.getLocation() == InputOutputDescriptor::VECTOR) {
                 if (desc.mKind == InputOutputDescriptor::INPUT) {
                     const size_t inputOffset = inputIndex * problemSize * problemSize;
-                    std::copy(goldenInputs.begin() + inputOffset,
-                              goldenInputs.begin() + inputOffset + problemSize * problemSize,
+                    std::copy(masterInputs.begin() + inputOffset,
+                              masterInputs.begin() + inputOffset + problemSize * problemSize,
                               desc.mVector.begin());
                     e->setInput(inputIndex++, desc.mVector.data(),
                                 desc.mVector.size() * sizeof(float));
                 } else {
                     std::fill(desc.mVector.begin(),
-                              desc.mVector.begin() + problemSize * problemSize, goldenOutput);
+                              desc.mVector.begin() + problemSize * problemSize, masterOutput);
                     e->setOutput(outputIndex++, desc.mVector.data(),
                                  desc.mVector.size() * sizeof(float), &problemType.operandType);
                 }
@@ -1362,12 +1327,12 @@ TEST_P(RandomPartitioningTest, Test) {
                 CHECK(length == problemSize * problemSize * sizeof(float));
                 if (desc.mKind == InputOutputDescriptor::INPUT) {
                     const size_t inputOffset = inputIndex * problemSize * problemSize;
-                    std::copy(goldenInputs.begin() + inputOffset,
-                              goldenInputs.begin() + inputOffset + problemSize * problemSize,
+                    std::copy(masterInputs.begin() + inputOffset,
+                              masterInputs.begin() + inputOffset + problemSize * problemSize,
                               region);
                     e->setInputFromMemory(inputIndex++, memory, offset, length);
                 } else {
-                    std::fill(region, region + problemSize * problemSize, goldenOutput);
+                    std::fill(region, region + problemSize * problemSize, masterOutput);
                     e->setOutputFromMemory(outputIndex++, memory, offset, length,
                                            &problemType.operandType);
                 }
@@ -1380,7 +1345,7 @@ TEST_P(RandomPartitioningTest, Test) {
     // Non-partitioned execution.
     WrapperExecution e(&c);
     ASSERT_NO_FATAL_FAILURE(prepareForExecution(&e));
-    ASSERT_EQ(e.compute(computeMode), Result::NO_ERROR);
+    ASSERT_EQ(e.compute(), Result::NO_ERROR);
 
     // Copy the outputs of the non-partitioned execution to a save area.
     std::vector<float> nonPartitionedOutputs(problemSize * problemSize * model.outputCount());
@@ -1411,9 +1376,9 @@ TEST_P(RandomPartitioningTest, Test) {
     }
 
     // Partitioned execution.
-    WrapperExecution e2(&c2);
+    WrapperExecution e2(c2);
     ASSERT_NO_FATAL_FAILURE(prepareForExecution(&e2));
-    ASSERT_EQ(e2.compute(computeMode), Result::NO_ERROR);
+    ASSERT_EQ(e2.compute(), Result::NO_ERROR);
 
     // Compare the outputs of the partitioned execution to the save
     // area containing the outpus of the non-partitioned execution.

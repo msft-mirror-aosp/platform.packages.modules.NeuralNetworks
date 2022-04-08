@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include "NeuralNetworks.h"
 #include "NeuralNetworksOEM.h"
 #include "NeuralNetworksWrapper.h"
-
 #ifndef NNTEST_ONLY_PUBLIC_API
-#include <Utils.h>
+#include "Utils.h"
 #endif
+
+#include <gtest/gtest.h>
 
 namespace {
 

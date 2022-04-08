@@ -190,7 +190,7 @@ const TestModel& get_test_model_half_pixel_centers_5x2_to_2x2_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder
+                        }, { // dummy
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -418,7 +418,7 @@ const TestModel& get_test_model_half_pixel_centers_5x2_to_2x2_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder1
+                        }, { // dummy1
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -646,7 +646,7 @@ const TestModel& get_test_model_half_pixel_centers_5x2_to_2x2_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder2
+                        }, { // dummy2
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -874,7 +874,7 @@ const TestModel& get_test_model_half_pixel_centers_5x2_to_2x2_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder3
+                        }, { // dummy3
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -1102,7 +1102,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_1x1_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder4
+                        }, { // dummy4
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -1330,7 +1330,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_1x1_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder5
+                        }, { // dummy5
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -1558,7 +1558,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_1x1_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder6
+                        }, { // dummy6
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -1786,7 +1786,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_1x1_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder7
+                        }, { // dummy7
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -2014,7 +2014,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_3x3_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder8
+                        }, { // dummy8
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -2242,7 +2242,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_3x3_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder9
+                        }, { // dummy9
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -2470,7 +2470,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_3x3_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder10
+                        }, { // dummy10
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -2698,7 +2698,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_3x3_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder11
+                        }, { // dummy11
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -2926,7 +2926,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_2x5_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder12
+                        }, { // dummy12
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -3154,7 +3154,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_2x5_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder13
+                        }, { // dummy13
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -3382,7 +3382,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_2x5_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder14
+                        }, { // dummy14
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -3610,7 +3610,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_2x5_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder15
+                        }, { // dummy15
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -3838,7 +3838,7 @@ const TestModel& get_test_model_half_pixel_centers_4x4_to_3x3_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder16
+                        }, { // dummy16
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -4066,7 +4066,7 @@ const TestModel& get_test_model_half_pixel_centers_4x4_to_3x3_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder17
+                        }, { // dummy17
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -4294,7 +4294,7 @@ const TestModel& get_test_model_half_pixel_centers_4x4_to_3x3_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder18
+                        }, { // dummy18
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -4522,7 +4522,7 @@ const TestModel& get_test_model_half_pixel_centers_4x4_to_3x3_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder19
+                        }, { // dummy19
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -4750,7 +4750,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_5x2_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder20
+                        }, { // dummy20
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -4978,7 +4978,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_5x2_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder21
+                        }, { // dummy21
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -5206,7 +5206,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_5x2_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder22
+                        }, { // dummy22
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -5434,7 +5434,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_5x2_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder23
+                        }, { // dummy23
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -5662,7 +5662,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_4x4_all_inputs_as_inte
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder24
+                        }, { // dummy24
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -5890,7 +5890,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_4x4_float16_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder25
+                        }, { // dummy25
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -6118,7 +6118,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_4x4_relaxed_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder26
+                        }, { // dummy26
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -6346,7 +6346,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2_to_4x4_quant8_all_inputs_
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder27
+                        }, { // dummy27
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -6574,7 +6574,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2x2x2_to_2x3x3x2_all_inputs
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder28
+                        }, { // dummy28
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -6802,7 +6802,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2x2x2_to_2x3x3x2_float16_al
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder29
+                        }, { // dummy29
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -7030,7 +7030,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2x2x2_to_2x3x3x2_relaxed_al
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder30
+                        }, { // dummy30
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -7258,7 +7258,7 @@ const TestModel& get_test_model_half_pixel_centers_2x2x2x2_to_2x3x3x2_quant8_all
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder31
+                        }, { // dummy31
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -7486,7 +7486,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_all_inputs_as_internal(
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder32
+                        }, { // dummy32
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -7714,7 +7714,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_float16_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder33
+                        }, { // dummy33
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -7942,7 +7942,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_relaxed_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder34
+                        }, { // dummy34
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -8170,7 +8170,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_quant8_all_inputs_as_in
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder35
+                        }, { // dummy35
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -8398,7 +8398,7 @@ const TestModel& get_test_model_align_corners_2x2_to_3x3_all_inputs_as_internal(
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder36
+                        }, { // dummy36
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -8626,7 +8626,7 @@ const TestModel& get_test_model_align_corners_2x2_to_3x3_float16_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder37
+                        }, { // dummy37
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -8854,7 +8854,7 @@ const TestModel& get_test_model_align_corners_2x2_to_3x3_relaxed_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder38
+                        }, { // dummy38
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -9082,7 +9082,7 @@ const TestModel& get_test_model_align_corners_2x2_to_3x3_quant8_all_inputs_as_in
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder39
+                        }, { // dummy39
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -9310,7 +9310,7 @@ const TestModel& get_test_model_align_corners_3x3_to_2x2_all_inputs_as_internal(
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder40
+                        }, { // dummy40
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -9538,7 +9538,7 @@ const TestModel& get_test_model_align_corners_3x3_to_2x2_float16_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder41
+                        }, { // dummy41
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -9766,7 +9766,7 @@ const TestModel& get_test_model_align_corners_3x3_to_2x2_relaxed_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder42
+                        }, { // dummy42
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -9994,7 +9994,7 @@ const TestModel& get_test_model_align_corners_3x3_to_2x2_quant8_all_inputs_as_in
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder43
+                        }, { // dummy43
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -10222,7 +10222,7 @@ const TestModel& get_test_model_align_corners_4x4_to_3x3_all_inputs_as_internal(
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder44
+                        }, { // dummy44
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -10450,7 +10450,7 @@ const TestModel& get_test_model_align_corners_4x4_to_3x3_float16_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder45
+                        }, { // dummy45
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -10678,7 +10678,7 @@ const TestModel& get_test_model_align_corners_4x4_to_3x3_relaxed_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder46
+                        }, { // dummy46
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -10906,7 +10906,7 @@ const TestModel& get_test_model_align_corners_4x4_to_3x3_quant8_all_inputs_as_in
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder47
+                        }, { // dummy47
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -11134,7 +11134,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_all_inputs_as_internal_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder48
+                        }, { // dummy48
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -11362,7 +11362,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_float16_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder49
+                        }, { // dummy49
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -11590,7 +11590,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_relaxed_all_inputs_as_i
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder50
+                        }, { // dummy50
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -11818,7 +11818,7 @@ const TestModel& get_test_model_align_corners_2x2_to_1x1_quant8_all_inputs_as_in
                             .scale = 0.5f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 128
-                        }, { // placeholder51
+                        }, { // dummy51
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({128}),
                             .dimensions = {1},
@@ -12046,7 +12046,7 @@ const TestModel& get_test_model_shape_default_values_nhwc_all_inputs_as_internal
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder52
+                        }, { // dummy52
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -12274,7 +12274,7 @@ const TestModel& get_test_model_shape_default_values_nhwc_relaxed_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder53
+                        }, { // dummy53
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -12502,7 +12502,7 @@ const TestModel& get_test_model_shape_default_values_nhwc_quant8_all_inputs_as_i
                             .scale = 0.25f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 100
-                        }, { // placeholder54
+                        }, { // dummy54
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({100}),
                             .dimensions = {1},
@@ -12730,7 +12730,7 @@ const TestModel& get_test_model_shape_default_values_nhwc_float16_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder55
+                        }, { // dummy55
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -12958,7 +12958,7 @@ const TestModel& get_test_model_shape_default_values_nchw_all_inputs_as_internal
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder56
+                        }, { // dummy56
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -13186,7 +13186,7 @@ const TestModel& get_test_model_shape_default_values_nchw_relaxed_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder57
+                        }, { // dummy57
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -13414,7 +13414,7 @@ const TestModel& get_test_model_shape_default_values_nchw_quant8_all_inputs_as_i
                             .scale = 0.25f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 100
-                        }, { // placeholder58
+                        }, { // dummy58
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({100}),
                             .dimensions = {1},
@@ -13642,7 +13642,7 @@ const TestModel& get_test_model_shape_default_values_nchw_float16_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder59
+                        }, { // dummy59
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -13870,7 +13870,7 @@ const TestModel& get_test_model_scale_default_values_nhwc_all_inputs_as_internal
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder60
+                        }, { // dummy60
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -14098,7 +14098,7 @@ const TestModel& get_test_model_scale_default_values_nhwc_relaxed_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder61
+                        }, { // dummy61
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -14326,7 +14326,7 @@ const TestModel& get_test_model_scale_default_values_nhwc_quant8_all_inputs_as_i
                             .scale = 0.25f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 100
-                        }, { // placeholder62
+                        }, { // dummy62
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({100}),
                             .dimensions = {1},
@@ -14554,7 +14554,7 @@ const TestModel& get_test_model_scale_default_values_nhwc_float16_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder63
+                        }, { // dummy63
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},
@@ -14782,7 +14782,7 @@ const TestModel& get_test_model_scale_default_values_nchw_all_inputs_as_internal
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder64
+                        }, { // dummy64
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -15010,7 +15010,7 @@ const TestModel& get_test_model_scale_default_values_nchw_relaxed_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT32,
                             .zeroPoint = 0
-                        }, { // placeholder65
+                        }, { // dummy65
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<float>({0.0f}),
                             .dimensions = {1},
@@ -15238,7 +15238,7 @@ const TestModel& get_test_model_scale_default_values_nchw_quant8_all_inputs_as_i
                             .scale = 0.25f,
                             .type = TestOperandType::TENSOR_QUANT8_ASYMM,
                             .zeroPoint = 100
-                        }, { // placeholder66
+                        }, { // dummy66
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<uint8_t>({100}),
                             .dimensions = {1},
@@ -15466,7 +15466,7 @@ const TestModel& get_test_model_scale_default_values_nchw_float16_all_inputs_as_
                             .scale = 0.0f,
                             .type = TestOperandType::TENSOR_FLOAT16,
                             .zeroPoint = 0
-                        }, { // placeholder67
+                        }, { // dummy67
                             .channelQuant = {},
                             .data = TestBuffer::createFromVector<_Float16>({0.0f}),
                             .dimensions = {1},

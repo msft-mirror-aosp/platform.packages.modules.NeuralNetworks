@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <vector>
-
-#include "NeuralNetworksWrapper.h"
 #include "SVDF.h"
+
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
+#include "NeuralNetworksWrapper.h"
 
 using ::testing::FloatNear;
 using ::testing::Matcher;

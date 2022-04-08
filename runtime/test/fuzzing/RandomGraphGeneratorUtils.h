@@ -17,8 +17,6 @@
 #ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_TEST_FUZZING_RANDOM_GRAPH_GENERATOR_UTILS_H
 #define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_TEST_FUZZING_RANDOM_GRAPH_GENERATOR_UTILS_H
 
-#include <android/log.h>
-
 #include <chrono>
 #include <fstream>
 #include <limits>
@@ -38,8 +36,6 @@ namespace nn {
 namespace fuzzing_test {
 
 #define NN_FUZZER_LOG_INIT(filename) Logger::get()->init((filename))
-#define NN_FUZZER_LOG_WRITE_FATAL_TO_SYSLOG(logTag) \
-    LoggerStream::writeAbortMessageToSystemLog(logTag)
 #define NN_FUZZER_LOG_CLOSE Logger::get()->close()
 #define NN_FUZZER_LOG              \
     if (!Logger::get()->enabled()) \
@@ -88,11 +84,7 @@ class LoggerStream {
     ~LoggerStream() {
         Logger::get()->log(ss.str() + '\n');
         if (mAbortAfterLog) {
-            if (LoggerStream::mWriteAbortMessageToSystemLog) {
-                __android_log_print(ANDROID_LOG_FATAL, mLogTag.c_str(), "%s", ss.str().c_str());
-            } else {
-                std::cout << ss.str() << std::endl;
-            }
+            std::cout << ss.str() << std::endl;
             abort();
         }
     }
@@ -103,29 +95,26 @@ class LoggerStream {
         return *this;
     }
 
-    static void writeAbortMessageToSystemLog(const std::string& logTag) {
-        LoggerStream::mWriteAbortMessageToSystemLog = true;
-        LoggerStream::mLogTag = logTag;
-    }
-
    private:
     LoggerStream(const LoggerStream&) = delete;
     LoggerStream& operator=(const LoggerStream&) = delete;
     std::stringstream ss;
     bool mAbortAfterLog;
-
-    static bool mWriteAbortMessageToSystemLog;
-    static std::string mLogTag;
 };
+
+template <typename T>
+inline std::string toString(const T& obj) {
+    return std::to_string(obj);
+}
 
 template <typename T>
 inline std::string joinStr(const std::string& joint, const std::vector<T>& items) {
     std::stringstream ss;
     for (uint32_t i = 0; i < items.size(); i++) {
         if (i == 0) {
-            ss << items[i];
+            ss << toString(items[i]);
         } else {
-            ss << joint << items[i];
+            ss << joint << toString(items[i]);
         }
     }
     return ss.str();
@@ -145,14 +134,17 @@ template <typename T>
 inline std::string joinStr(const std::string& joint, int limit, const std::vector<T>& items) {
     if (items.size() > static_cast<size_t>(limit)) {
         std::vector<T> topMax(items.begin(), items.begin() + limit);
-        std::stringstream ss;
-        ss << joinStr(joint, topMax) << ", (" << (items.size() - limit) << " omitted), "
-           << items.back();
-        return ss.str();
+        return joinStr(joint, topMax) + ", (" + toString(items.size() - limit) + " ommited), " +
+               toString(items.back());
     } else {
         return joinStr(joint, items);
     }
 }
+
+static const char* kLifeTimeNames[6] = {
+        "TEMPORARY_VARIABLE", "SUBGRAPH_INPUT",     "SUBGRAPH_OUTPUT",
+        "CONSTANT_COPY",      "CONSTANT_REFERENCE", "NO_VALUE",
+};
 
 static const bool kScalarDataType[]{
         true,   // ANEURALNETWORKS_FLOAT32
@@ -190,9 +182,10 @@ static const uint32_t kSizeOfDataType[]{
         1,  // ANEURALNETWORKS_TENSOR_QUANT8_ASYMM_SIGNED
 };
 
-inline std::ostream& operator<<(std::ostream& os, const RandomVariableType& type) {
+template <>
+inline std::string toString<RandomVariableType>(const RandomVariableType& type) {
     static const std::string typeNames[] = {"FREE", "CONST", "OP"};
-    return os << typeNames[static_cast<int>(type)];
+    return typeNames[static_cast<int>(type)];
 }
 
 inline std::string alignedString(std::string str, int width) {
@@ -201,45 +194,51 @@ inline std::string alignedString(std::string str, int width) {
     return str;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const RandomVariableRange& range) {
-    return os << "[" + joinStr(", ", 20, range.getChoices()) + "]";
+template <>
+inline std::string toString<RandomVariableRange>(const RandomVariableRange& range) {
+    return "[" + joinStr(", ", 20, range.getChoices()) + "]";
 }
 
-inline std::ostream& operator<<(std::ostream& os, const RandomOperandType& type) {
+template <>
+inline std::string toString<RandomOperandType>(const RandomOperandType& type) {
     static const std::string typeNames[] = {"Input", "Output", "Internal", "Parameter", "No Value"};
-    return os << typeNames[static_cast<int>(type)];
+    return typeNames[static_cast<int>(type)];
 }
 
-inline std::ostream& operator<<(std::ostream& os, const RandomVariableNode& var) {
-    os << "var" << var->index << " = ";
+template <>
+inline std::string toString<RandomVariableNode>(const RandomVariableNode& var) {
+    std::stringstream ss;
+    ss << "var" << var->index << " = ";
     switch (var->type) {
         case RandomVariableType::FREE:
-            os << "FREE " << var->range;
+            ss << "FREE " << toString(var->range);
             break;
         case RandomVariableType::CONST:
-            os << "CONST " << var->value;
+            ss << "CONST " << toString(var->value);
             break;
         case RandomVariableType::OP:
-            os << "var" << var->parent1->index << " " << var->op->getName();
-            if (var->parent2 != nullptr) os << " var" << var->parent2->index;
-            os << ", " << var->range;
+            ss << "var" << var->parent1->index << " " << var->op->getName();
+            if (var->parent2 != nullptr) ss << " var" << var->parent2->index;
+            ss << ", " << toString(var->range);
             break;
         default:
             NN_FUZZER_CHECK(false);
     }
-    os << ", timestamp = " << var->timestamp;
-    return os;
+    ss << ", timestamp = " << var->timestamp;
+    return ss.str();
 }
 
-inline std::ostream& operator<<(std::ostream& os, const RandomVariable& var) {
-    return os << "var" + std::to_string(var.get()->index);
+template <>
+inline std::string toString<RandomVariable>(const RandomVariable& var) {
+    return "var" + std::to_string(var.get()->index);
 }
 
-inline std::ostream& operator<<(std::ostream& os, const RandomOperand& op) {
-    return os << op.type << ", dimension = ["
-              << joinStr(", ", op.dimensions,
-                         [](const RandomVariable& var) { return std::to_string(var.getValue()); })
-              << "], scale = " << op.scale << " , zero_point = " << op.zeroPoint;
+template <>
+inline std::string toString<RandomOperand>(const RandomOperand& op) {
+    return toString(op.type) + ", dimension = [" +
+           joinStr(", ", op.dimensions,
+                   [](const RandomVariable& var) { return std::to_string(var.getValue()); }) +
+           "], scale = " + toString(op.scale) + " , zero_point = " + toString(op.zeroPoint);
 }
 
 // This class is a workaround for two issues our code relies on:

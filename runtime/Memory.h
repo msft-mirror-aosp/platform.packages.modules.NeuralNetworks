@@ -17,15 +17,9 @@
 #ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_MEMORY_H
 #define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_MEMORY_H
 
-#include <CpuExecutor.h>
-#include <LegacyUtils.h>
 #include <android-base/macros.h>
-#include <android-base/scopeguard.h>
-#include <nnapi/IBuffer.h>
-#include <nnapi/IBurst.h>
-#include <nnapi/SharedMemory.h>
-#include <nnapi/Validation.h>
 #include <sys/mman.h>
+#include <vndk/hardware_buffer.h>
 
 #include <algorithm>
 #include <map>
@@ -37,15 +31,19 @@
 #include <utility>
 #include <vector>
 
+#include "CpuExecutor.h"
+#include "HalInterfaces.h"
 #include "NeuralNetworks.h"
+#include "Utils.h"
 
 namespace android {
 namespace nn {
 
 class CompilationBuilder;
 class Device;
+class ExecutionBurstController;
 class ModelBuilder;
-class RuntimePreparedModel;
+class PreparedModel;
 
 // A utility template class to accumulate multiple objects and assign each
 // a distinct index number, starting with 0.
@@ -95,11 +93,12 @@ class ObjectTracker {
 };
 
 using CompilationRole = std::tuple<const CompilationBuilder*, IOType, uint32_t>;
+using StepRoleCallback = std::function<void(const PreparedModel*, IOType, uint32_t)>;
 
 struct MemoryDescriptor {
     std::vector<uint32_t> dimensions;
-    ObjectTracker<RuntimePreparedModel> preparedModels;
-    std::vector<BufferRole> inputRoles, outputRoles;
+    ObjectTracker<PreparedModel> preparedModels;
+    std::vector<hal::BufferRole> inputRoles, outputRoles;
 };
 
 class MemoryValidatorBase {
@@ -145,7 +144,7 @@ class MemoryValidatorBase {
         // The data type, scale, zero point, and extra parameters of the target operand.
         // Other fields will be ignored, including dimensions, lifetime, location, etc.
         // Set to std::nullopt if undefined.
-        std::optional<Operand> operand;
+        std::optional<hal::Operand> operand;
     };
     virtual Metadata getMetadata() const = 0;
 
@@ -159,23 +158,25 @@ class MemoryValidatorBase {
     virtual bool isInitialized() const { return true; }
 };
 
-int copyIBufferToMemory(const SharedBuffer& src, const SharedMemory& dst);
+int copyIBufferToHidlMemory(const sp<hal::IBuffer>& src, const hal::hidl_memory& dst);
 
-int copyMemoryToIBuffer(const SharedMemory& src, const SharedBuffer& dst,
-                        const std::vector<uint32_t>& dimensions);
+int copyHidlMemoryToIBuffer(const hal::hidl_memory& src, const sp<hal::IBuffer>& dst,
+                            const std::vector<uint32_t>& dimensions);
 
 // Represents a memory region.
-class RuntimeMemory {
+class Memory {
     // Disallow copy and assign to prevent slicing
-    DISALLOW_COPY_AND_ASSIGN(RuntimeMemory);
+    DISALLOW_COPY_AND_ASSIGN(Memory);
 
    public:
-    virtual ~RuntimeMemory() = default;
+    // Custom destructor to notify any ExecutionBurstControllers currently using
+    // this memory that it is being freed.
+    virtual ~Memory();
 
-    Request::MemoryPool getMemoryPool() const;
-    const SharedMemory& getMemory() const { return kMemory; }
-    const SharedBuffer& getIBuffer() const { return kBuffer; }
-    virtual uint32_t getSize() const { return nn::getSize(getMemory()); }
+    hal::Request::MemoryPool getMemoryPool() const;
+    const hal::hidl_memory& getHidlMemory() const { return kHidlMemory; }
+    const sp<hal::IBuffer>& getIBuffer() const { return kBuffer; }
+    virtual uint32_t getSize() const { return getHidlMemory().size(); }
     virtual std::optional<RunTimePoolInfo> getRunTimePoolInfo() const;
 
     MemoryValidatorBase& getValidator() const {
@@ -187,31 +188,40 @@ class RuntimeMemory {
         mValidator = std::move(validator);
     }
 
-    // This function binds `cacheHold` to the memory object, holding it for as long as the Memory
-    // object is alive. This keeps the cache present while the Memory object is alive. If
-    // `cacheHold` is null, this function is a no-op.
-    void hold(const IBurst::OptionalCacheHold& cacheHold) const;
+    // Unique key representing this memory object.
+    intptr_t getKey() const;
 
-    static int copy(const RuntimeMemory& src, const RuntimeMemory& dst);
+    // Marks a burst object as currently using this memory. When this
+    // memory object is destroyed, it will automatically free this memory from
+    // the bursts' memory cache.
+    void usedBy(const std::shared_ptr<ExecutionBurstController>& burst) const;
+
+    static int copy(const Memory& src, const Memory& dst);
 
    protected:
-    explicit RuntimeMemory(SharedMemory memory);
-    RuntimeMemory(SharedMemory memory, std::unique_ptr<MemoryValidatorBase> validator);
-    explicit RuntimeMemory(SharedBuffer buffer);
+    Memory(hal::hidl_memory memory);
+    Memory(hal::hidl_memory memory, std::unique_ptr<MemoryValidatorBase> validator);
+    Memory(sp<hal::IBuffer> buffer, uint32_t token);
 
-    // The canonical representation for this memory.  We will use one of the
-    // following values when communicating with the drivers.
-    const SharedMemory kMemory = std::make_shared<const Memory>();
-    const SharedBuffer kBuffer;
+    // The HIDL representation for this memory.  We will use one of the following values
+    // when communicating with the drivers.
+    const hal::hidl_memory kHidlMemory;
+    const sp<hal::IBuffer> kBuffer;
+    const uint32_t kToken = 0;
 
     std::unique_ptr<MemoryValidatorBase> mValidator;
 
    private:
     mutable std::mutex mMutex;
-
-    // This set contains `CacheHold` objects, holding it for as long as the Memory object is alive.
-    // This keeps the cache present while the Memory object is alive.
-    mutable std::set<IBurst::OptionalCacheHold> mHold;
+    // mUsedBy is essentially a set of burst objects which use this Memory
+    // object. However, std::weak_ptr does not have comparison operations nor a
+    // std::hash implementation. This is because it is either a valid pointer
+    // (non-null) if the shared object is still alive, or it is null if the
+    // object has been freed. To circumvent this, mUsedBy is a map with the raw
+    // pointer as the key and the weak_ptr as the value.
+    mutable std::unordered_map<const ExecutionBurstController*,
+                               std::weak_ptr<ExecutionBurstController>>
+            mUsedBy;
 
     mutable std::optional<RunTimePoolInfo> mCachedRunTimePoolInfo;
     mutable bool mHasCachedRunTimePoolInfo = false;
@@ -228,7 +238,7 @@ class MemoryBuilder {
 
     int finish();
 
-    std::pair<int, std::unique_ptr<RuntimeMemory>> allocate() const;
+    std::pair<int, std::unique_ptr<Memory>> allocate() const;
 
    private:
     bool badState(const char* name) const;
@@ -243,7 +253,7 @@ class MemoryBuilder {
     // Keep track of the data type, scale, zero point, and extra parameters of the target operand.
     // Other fields will be ignored, including dimensions, lifetime, location, etc.
     // It is std::nullopt if no usage has been specified yet.
-    std::optional<Operand> mOperand;
+    std::optional<hal::Operand> mOperand;
 
     // Once the descriptor has been finished, we should not allow further modifications.
     bool mFinished = false;
@@ -261,7 +271,7 @@ class MemoryBuilder {
     bool mShouldFallback = true;
 };
 
-class MemoryAshmem : public RuntimeMemory {
+class MemoryAshmem : public Memory {
    public:
     // Creates a memory object containing a new android shared memory ("ashmem")
     // object of the size specified in bytes. Because this ashmem region can be
@@ -278,20 +288,21 @@ class MemoryAshmem : public RuntimeMemory {
     uint8_t* getPointer() const;
 
     std::optional<RunTimePoolInfo> getRunTimePoolInfo() const override {
-        return RunTimePoolInfo::createFromExistingBuffer(getPointer(), nn::getSize(kMemory));
+        return RunTimePoolInfo::createFromExistingBuffer(getPointer(), kHidlMemory.size());
     }
 
     // prefer using MemoryAshmem::create
-    MemoryAshmem(SharedMemory memory, Mapping mapped);
+    MemoryAshmem(sp<hal::IMemory> mapped, hal::hidl_memory memory);
 
    private:
-    const Mapping kMapping;
+    const sp<hal::IMemory> kMappedMemory;
 };
 
-class MemoryFd : public RuntimeMemory {
+class MemoryFd : public Memory {
    public:
-    // Create a memory object based on input size, prot, and fd. This function
-    // duplicates the provided fd, and owns the duplicate.
+    // Create a memory object based on input size, prot, and fd that can be sent
+    // across HIDL. This function duplicates the provided fd, and owns the
+    // duplicate.
     //
     // On success, returns ANEURALNETWORKS_NO_ERROR and a memory object.
     // On error, returns the appropriate NNAPI error code and nullptr.
@@ -299,10 +310,10 @@ class MemoryFd : public RuntimeMemory {
                                                             size_t offset);
 
     // prefer using MemoryFd::create
-    explicit MemoryFd(SharedMemory memory);
+    MemoryFd(hal::hidl_memory memory);
 };
 
-class MemoryAHWB : public RuntimeMemory {
+class MemoryAHWB : public Memory {
    public:
     // Create a memory object to keep track of (but not take ownership of) the
     // provided AHardwareBuffer handle.
@@ -312,11 +323,11 @@ class MemoryAHWB : public RuntimeMemory {
     static std::pair<int, std::unique_ptr<MemoryAHWB>> create(const AHardwareBuffer& ahwb);
 
     // prefer using MemoryAHWB::create
-    MemoryAHWB(SharedMemory memory, std::unique_ptr<MemoryValidatorBase> validator)
-        : RuntimeMemory(std::move(memory), std::move(validator)) {}
+    MemoryAHWB(hal::hidl_memory memory, std::unique_ptr<MemoryValidatorBase> validator)
+        : Memory(std::move(memory), std::move(validator)) {}
 };
 
-class MemoryRuntimeAHWB : public RuntimeMemory {
+class MemoryRuntimeAHWB : public Memory {
    public:
     // Create a memory object containing a new BLOB-mode AHardwareBuffer memory
     // object of the size specified in bytes. The created memory is managed and
@@ -329,33 +340,36 @@ class MemoryRuntimeAHWB : public RuntimeMemory {
     // Get a pointer to the content of the memory. The returned pointer is
     // valid for the lifetime of the MemoryRuntimeAHWB object. This call always
     // returns non-null because it was validated during MemoryRuntimeAHWB::create.
-    uint8_t* getPointer() const;
+    uint8_t* getPointer() const { return mBuffer; }
 
     std::optional<RunTimePoolInfo> getRunTimePoolInfo() const override {
-        return RunTimePoolInfo::createFromExistingBuffer(getPointer(), nn::getSize(kMemory));
+        return RunTimePoolInfo::createFromExistingBuffer(getPointer(), kHidlMemory.size());
     }
 
     // prefer using MemoryRuntimeAHWB::create
-    MemoryRuntimeAHWB(SharedMemory memory, Mapping mapping);
+    MemoryRuntimeAHWB(hal::hidl_memory memory, AHardwareBuffer* ahwb, uint8_t* buffer);
+    ~MemoryRuntimeAHWB();
 
    private:
-    const Mapping kMapping;
+    AHardwareBuffer* const mAhwb;
+    uint8_t* const mBuffer;
 };
 
-class MemoryFromDevice : public RuntimeMemory {
+class MemoryFromDevice : public Memory {
    public:
     // Create a memory object to keep track of a driver-allocated device memory.
     // The memory is recognized by the driver via a token.
     //
     // On success, returns ANEURALNETWORKS_NO_ERROR and a memory object.
     // On error, returns the appropriate NNAPI error code and nullptr.
-    static std::pair<int, std::unique_ptr<MemoryFromDevice>> create(SharedBuffer buffer);
+    static std::pair<int, std::unique_ptr<MemoryFromDevice>> create(sp<hal::IBuffer> buffer,
+                                                                    uint32_t token);
 
     // prefer using MemoryFromDevice::create
-    explicit MemoryFromDevice(SharedBuffer buffer);
+    MemoryFromDevice(sp<hal::IBuffer> buffer, uint32_t token);
 };
 
-using MemoryTracker = ObjectTracker<RuntimeMemory>;
+using MemoryTracker = ObjectTracker<Memory>;
 
 }  // namespace nn
 }  // namespace android

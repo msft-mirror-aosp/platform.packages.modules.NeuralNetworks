@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include "NeuralNetworksWrapper.h"
+
+#include <gtest/gtest.h>
 
 using namespace ::android::nn::wrapper;
 

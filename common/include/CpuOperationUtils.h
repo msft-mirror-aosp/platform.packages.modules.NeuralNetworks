@@ -17,7 +17,6 @@
 #ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_CPU_OPERATION_UTILS_H
 #define ANDROID_FRAMEWORKS_ML_NN_COMMON_CPU_OPERATION_UTILS_H
 
-#include <android-base/logging.h>
 #include <tensorflow/lite/kernels/internal/types.h>
 
 #include <algorithm>
@@ -33,7 +32,7 @@ namespace nn {
 // The implementations in tflite/kernels/internal/ take a Dims<4> object
 // even if the original tensors were not 4D.
 inline tflite::Dims<4> convertShapeToDims(const Shape& shape) {
-    CHECK_LE(shape.dimensions.size(), 4u);
+    nnAssert(shape.dimensions.size() <= 4);
     tflite::Dims<4> dims;
 
     // The dimensions are reversed in Dims<4>.

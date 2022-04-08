@@ -18,15 +18,14 @@
 
 #include <vector>
 
+#include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
-#include "Tracing.h"
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/reference_ops.h>
 
-#include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
+#include "Tracing.h"
 
 namespace android {
 namespace nn {
@@ -41,8 +40,9 @@ constexpr uint32_t kPermTensor = 1;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
+
+using namespace hal;
 
 template <typename T>
 bool transposeGeneric(const T* inputData, const Shape& inputShape, const int32_t* perm,
@@ -72,20 +72,18 @@ bool transposeGeneric(const T* inputData, const Shape& inputShape, const int32_t
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
 
     const OperandType inputType = context->getInputType(kInputTensor);
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT32 || inputType == OperandType::TENSOR_QUANT8_ASYMM) {
-        minSupportedVersion = Version::ANDROID_P;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_1));
     } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     } else {
         NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
@@ -93,12 +91,10 @@ Result<Version> validate(const IOperationValidationContext* context) {
     if (hasKnownRank(input)) {
         NN_RET_CHECK_LE(getNumberOfDimensions(input), 4);
     }
-    NN_RET_CHECK(validateInputTypes(context, {inputType, OperandType::TENSOR_INT32}));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, {inputType, OperandType::TENSOR_INT32}) &&
+           validateOutputTypes(context, {inputType});
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     // Only the permutation tensor can be omitted.
     NN_RET_CHECK(!context->isOmittedInput(kInputTensor));
@@ -174,7 +170,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace transpose
 

@@ -16,22 +16,21 @@
 
 #define LOG_TAG "Operations"
 
+#include <tensorflow/lite/kernels/internal/reference/reference_ops.h>
+
 #include <algorithm>
 #include <functional>
 #include <vector>
 
+#include "CpuOperationUtils.h"
+#include "HalInterfaces.h"
 #include "OperationResolver.h"
 #include "Tracing.h"
-#include "nnapi/Validation.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#include <tensorflow/lite/kernels/internal/reference/reference_ops.h>
-
-#include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
 namespace nn {
+
+using namespace hal;
 
 namespace resize_image {
 
@@ -48,7 +47,6 @@ constexpr uint32_t kHalfPixelCentersScalar = 5;
 constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 namespace {
 
 inline float scaleHalfPixel(const int x, const float scale) {
@@ -172,35 +170,33 @@ inline bool getOptionalScalar(const IOperationExecutionContext* context, uint32_
 }
 
 }  // namespace
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
-Result<Version> validate(OperationType opType, const IOperationValidationContext* context) {
+bool validate(OperationType opType, const IOperationValidationContext* context) {
     const auto numInputs = context->getNumInputs();
     if (opType == OperationType::RESIZE_BILINEAR) {
         NN_RET_CHECK(numInputs >= kNumInputs - 1 && numInputs <= kNumInputs + kNumOptionalInputs);
     } else if (opType == OperationType::RESIZE_NEAREST_NEIGHBOR) {
         NN_RET_CHECK(numInputs >= kNumInputs && numInputs <= kNumInputs + kNumOptionalInputs);
     } else {
-        NN_RET_CHECK_FAIL() << "Unsupported operation " << opType;
+        NN_RET_CHECK_FAIL() << "Unsupported operation " << getOperationName(opType);
     }
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
     auto scalarType = context->getInputType(kOutputHeightParamScalar);
     std::vector<OperandType> inExpectedTypes = {inputType, scalarType, scalarType};
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     NN_RET_CHECK(inputType == OperandType::TENSOR_FLOAT16 ||
                  inputType == OperandType::TENSOR_FLOAT32 ||
                  inputType == OperandType::TENSOR_QUANT8_ASYMM ||
                  inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
-            << "Unsupported tensor type for operation " << opType;
+            << "Unsupported tensor type for operation " << getOperationName(opType);
     if (inputType == OperandType::TENSOR_FLOAT16 || inputType == OperandType::TENSOR_QUANT8_ASYMM) {
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     }
     if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_R);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     }
     if (scalarType != OperandType::INT32) {
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         if (inputType == OperandType::TENSOR_FLOAT32) {
             NN_RET_CHECK(scalarType == OperandType::FLOAT32);
         } else if (inputType == OperandType::TENSOR_FLOAT16) {
@@ -211,22 +207,20 @@ Result<Version> validate(OperationType opType, const IOperationValidationContext
         }
     }
     if (numInputs < kNumInputs) {
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_OC_MR1);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
     } else if (numInputs == kNumInputs) {
         inExpectedTypes.push_back(OperandType::BOOL);
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_Q);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
     } else {
         while (inExpectedTypes.size() < numInputs) {
             inExpectedTypes.push_back(OperandType::BOOL);
         }
-        minSupportedVersion = combineVersions(minSupportedVersion, Version::ANDROID_R);
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
     }
-    NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
-    NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return minSupportedVersion;
+    return validateInputTypes(context, inExpectedTypes) &&
+           validateOutputTypes(context, {inputType});
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(OperationType opType, IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     NN_RET_CHECK_EQ(getNumberOfDimensions(input), 4);
@@ -264,7 +258,7 @@ bool prepare(OperationType opType, IOperationExecutionContext* context) {
                 static_cast<float>(inWidth) *
                 static_cast<float>(context->getInputValue<_Float16>(kOutputWidthParamScalar)));
     } else {
-        NN_RET_CHECK_FAIL() << "Unsupported scalar type for operation " << opType;
+        NN_RET_CHECK_FAIL() << "Unsupported scalar type for operation " << getOperationName(opType);
     }
     NN_RET_CHECK_GT(height, 0);
     NN_RET_CHECK_GT(width, 0);
@@ -310,10 +304,10 @@ bool execute(OperationType opType, IOperationExecutionContext* context) {
                                  context->getOutputShape(kOutputTensor));
 
         default:
-            NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << opType;
+            NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation "
+                                << getOperationName(opType);
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace resize_image
 

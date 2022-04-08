@@ -17,11 +17,10 @@
 #ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_BURST_BUILDER_H
 #define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_BURST_BUILDER_H
 
-#include <nnapi/IBurst.h>
-
 #include <atomic>
 #include <memory>
 #include <vector>
+#include "ExecutionBurstController.h"
 
 namespace android {
 namespace nn {
@@ -40,18 +39,19 @@ class CompilationBuilder;
 
 class BurstBuilder {
    public:
-    BurstBuilder(const CompilationBuilder* compilation, std::vector<SharedBurst> burstControllers);
+    BurstBuilder(const CompilationBuilder* compilation,
+                 std::vector<std::shared_ptr<ExecutionBurstController>> burstControllers);
 
     bool tryLock();
     void unlock();
 
     const CompilationBuilder* getCompilation() const;
-    SharedBurst getControllerAt(size_t index) const;
+    std::shared_ptr<ExecutionBurstController> getControllerAt(size_t index) const;
 
    private:
     std::atomic_flag mCurrentlyRunning = ATOMIC_FLAG_INIT;
     const CompilationBuilder* mCompilation;
-    std::vector<SharedBurst> mBurstControllers;
+    std::vector<std::shared_ptr<ExecutionBurstController>> mBurstControllers;
 };
 
 }  // namespace nn

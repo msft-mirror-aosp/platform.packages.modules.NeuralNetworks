@@ -120,9 +120,9 @@ DEFINE_OPERATION_SIGNATURE(CONCAT_3_V1_3){
 
 // SPLIT with fixed number of splits.
 static void splitConstructor(uint32_t numSplits, uint32_t rank, RandomOperation* op) {
-    int32_t axis = getRandomAxis(rank);
+    int32_t axis = getUniform<int32_t>(-rank, rank - 1);
     op->inputs[1]->setScalarValue<int32_t>(axis);
-    axis = toPositiveAxis(axis, rank);
+    if (axis < 0) axis += rank;
 
     op->inputs[0]->dimensions.resize(rank);
     for (uint32_t i = 0; i < numSplits; i++) {

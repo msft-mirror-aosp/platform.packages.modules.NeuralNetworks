@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
+#include "tensorflow/lite/kernels/internal/types.h"
 #define LOG_TAG "Operations"
 
-#include <vector>
-
-#include "OperationResolver.h"
-#include "Tracing.h"
-
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 #include <tensorflow/lite/kernels/internal/optimized/legacy_optimized_ops.h>
 #include <tensorflow/lite/kernels/internal/reference/integer_ops/fully_connected.h>
 #include <tensorflow/lite/kernels/internal/reference/reference_ops.h>
-#include <tensorflow/lite/kernels/internal/types.h>
+
+#include <vector>
 
 #include "CpuOperationUtils.h"
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
+#include "HalInterfaces.h"
+#include "OperationResolver.h"
+#include "Tracing.h"
 
 namespace android {
 namespace nn {
@@ -47,7 +45,8 @@ constexpr uint32_t kOutputTensor = 0;
 
 namespace {
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
+using namespace hal;
+
 // executionMutex is used to protect concurrent access of non-threadsafe resources
 // like gemmlowp::GemmContext.
 // std::mutex is safe for pthreads on Android.
@@ -180,7 +179,6 @@ bool fullyConnectedQuant8(const int8_t* inputData, const Shape& inputShape,
 
     return true;
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 bool validateShapes(const Shape& input, const Shape& weights, const Shape& bias,
                     Shape* output = nullptr) {
@@ -222,15 +220,14 @@ bool validateShapes(const Shape& input, const Shape& weights, const Shape& bias,
 
 }  // namespace
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     auto inputType = context->getInputType(kInputTensor);
     std::vector<OperandType> inExpectedTypes;
     std::vector<OperandType> outExpectedTypes;
-    auto minSupportedVersion = Version::ANDROID_OC_MR1;
     if (inputType == OperandType::TENSOR_FLOAT32) {
-        minSupportedVersion = Version::ANDROID_OC_MR1;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
         inExpectedTypes = {
                 OperandType::TENSOR_FLOAT32,
                 OperandType::TENSOR_FLOAT32,
@@ -238,7 +235,7 @@ Result<Version> validate(const IOperationValidationContext* context) {
                 OperandType::INT32,
         };
     } else if (inputType == OperandType::TENSOR_FLOAT16) {
-        minSupportedVersion = Version::ANDROID_Q;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         inExpectedTypes = {
                 OperandType::TENSOR_FLOAT16,
                 OperandType::TENSOR_FLOAT16,
@@ -255,9 +252,9 @@ Result<Version> validate(const IOperationValidationContext* context) {
         bool meetsQuantizedScaleConstraintBeforeV1_2 = (outputScale > inputScale * weightsScale);
 
         if (!meetsQuantizedScaleConstraintBeforeV1_2) {
-            minSupportedVersion = Version::ANDROID_Q;
+            NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_2));
         } else {
-            minSupportedVersion = Version::ANDROID_OC_MR1;
+            NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_0));
         }
 
         inExpectedTypes = {
@@ -267,7 +264,7 @@ Result<Version> validate(const IOperationValidationContext* context) {
                 OperandType::INT32,
         };
     } else if (inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
-        minSupportedVersion = Version::ANDROID_R;
+        NN_RET_CHECK(validateHalVersion(context, HalVersion::V1_3));
 
         inExpectedTypes = {
                 OperandType::TENSOR_QUANT8_ASYMM_SIGNED,
@@ -277,6 +274,7 @@ Result<Version> validate(const IOperationValidationContext* context) {
         };
     } else {
         NN_RET_CHECK_FAIL() << "Unsupported input tensor type for operation " << kOperationName;
+        return false;
     }
     NN_RET_CHECK(validateInputTypes(context, inExpectedTypes));
     NN_RET_CHECK(validateOutputTypes(context, {inputType}));
@@ -288,10 +286,9 @@ Result<Version> validate(const IOperationValidationContext* context) {
         NN_RET_CHECK(validateShapes(input, weights, bias));
     }
 
-    return minSupportedVersion;
+    return true;
 }
 
-#ifdef NN_INCLUDE_CPU_IMPLEMENTATION
 bool prepare(IOperationExecutionContext* context) {
     Shape input = context->getInputShape(kInputTensor);
     Shape weights = context->getInputShape(kWeightsTensor);
@@ -349,7 +346,6 @@ bool execute(IOperationExecutionContext* context) {
             NN_RET_CHECK_FAIL() << "Unsupported tensor type for operation " << kOperationName;
     }
 }
-#endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 }  // namespace fully_connected
 

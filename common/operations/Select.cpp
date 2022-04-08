@@ -16,6 +16,7 @@
 
 #define LOG_TAG "Operations"
 
+#include "HalInterfaces.h"
 #include "IndexedShapeWrapper.h"
 #include "OperationResolver.h"
 #include "OperationsUtils.h"
@@ -33,6 +34,8 @@ constexpr uint32_t kNumOutputs = 1;
 constexpr uint32_t kOutputTensor = 0;
 
 namespace {
+
+using namespace hal;
 
 template <typename T>
 bool compute(const bool8* conditionData, const Shape& conditionShape, const T* aData,
@@ -66,7 +69,7 @@ bool executeTyped(IOperationExecutionContext* context) {
 
 }  // namespace
 
-Result<Version> validate(const IOperationValidationContext* context) {
+bool validate(const IOperationValidationContext* context) {
     NN_RET_CHECK_EQ(context->getNumInputs(), kNumInputs);
     NN_RET_CHECK_EQ(context->getNumOutputs(), kNumOutputs);
     OperandType inputType = context->getInputType(kInputTensor1);
@@ -75,10 +78,10 @@ Result<Version> validate(const IOperationValidationContext* context) {
                  inputType == OperandType::TENSOR_INT32 ||
                  inputType == OperandType::TENSOR_QUANT8_ASYMM ||
                  inputType == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)
-            << "Unsupported input operand type for select op: " << inputType;
+            << "Unsupported input operand type for select op: " << toString(inputType);
     NN_RET_CHECK(validateInputTypes(context, {OperandType::TENSOR_BOOL8, inputType, inputType}));
     NN_RET_CHECK(validateOutputTypes(context, {inputType}));
-    return Version::ANDROID_Q;
+    return validateHalVersion(context, HalVersion::V1_2);
 }
 
 bool prepare(IOperationExecutionContext* context) {
