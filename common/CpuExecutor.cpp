@@ -31,7 +31,7 @@
 #include "NeuralNetworks.h"
 #include "OperationResolver.h"
 #include "Operations.h"
-#include "OperationsUtils.h"
+#include "OperationsExecutionUtils.h"
 #include "Tracing.h"
 
 // b/109953668, disable OpenMP
@@ -42,20 +42,20 @@
 #endif  // NNAPI_OPENMP
 
 #ifdef NN_INCLUDE_CPU_IMPLEMENTATION
-#include "operations/BidirectionalSequenceLSTM.h"
-#include "operations/Cast.h"
-#include "operations/EmbeddingLookup.h"
-#include "operations/ExpandDims.h"
-#include "operations/HashtableLookup.h"
-#include "operations/LSHProjection.h"
-#include "operations/LSTM.h"
-#include "operations/MaximumMinimum.h"
-#include "operations/Multinomial.h"
-#include "operations/Pow.h"
-#include "operations/QuantizedLSTM.h"
-#include "operations/RNN.h"
-#include "operations/SVDF.h"
-#include "operations/Tile.h"
+#include "BidirectionalSequenceLSTM.h"
+#include "Cast.h"
+#include "EmbeddingLookup.h"
+#include "ExpandDims.h"
+#include "HashtableLookup.h"
+#include "LSHProjection.h"
+#include "LSTM.h"
+#include "MaximumMinimum.h"
+#include "Multinomial.h"
+#include "Pow.h"
+#include "QuantizedLSTM.h"
+#include "RNN.h"
+#include "SVDF.h"
+#include "Tile.h"
 #endif  // NN_INCLUDE_CPU_IMPLEMENTATION
 
 namespace android {
