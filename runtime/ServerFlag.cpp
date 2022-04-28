@@ -39,9 +39,28 @@ int64_t getServerFeatureLevelFlag() {
 }
 
 bool getServerTelemetryEnableFlag() {
-    const std::string telemetryEnabledString = server_configurable_flags::GetServerConfigurableFlag(
-            kExprCategoryName, kTelemetryEnableFlagName,
-            std::to_string(kDefaultTelemetryEnableValue));
+    return getServerTelemetryEnableFlag(server_configurable_flags::GetServerConfigurableFlag);
+}
+#endif  // NN_EXPERIMENTAL_FEATURE
+
+int64_t getServerFeatureLevelFlag(GetServerConfigurableFlagFunc serverFunc) {
+    const std::string featureLevelString =
+            serverFunc(kExprCategoryName, kCurrentFeatureLevelFlagName,
+                       std::to_string(kDefaultFeatureLevelNum));
+
+    int64_t featureLevel = kDefaultFeatureLevelNum;
+    const bool success = base::ParseInt(featureLevelString, &featureLevel, kMinFeatureLevelNum,
+                                        kMaxFeatureLevelNum);
+    if (!success) {
+        LOG(WARNING) << "Failed to parse result of GetServerConfigurableFlag, errno=" << errno;
+    }
+    return featureLevel;
+}
+
+bool getServerTelemetryEnableFlag(GetServerConfigurableFlagFunc serverFunc) {
+    const std::string telemetryEnabledString =
+            serverFunc(kExprCategoryName, kTelemetryEnableFlagName,
+                       std::to_string(kDefaultTelemetryEnableValue));
 
     const auto parseBoolResult = base::ParseBool(telemetryEnabledString);
     switch (parseBoolResult) {
@@ -57,23 +76,6 @@ bool getServerTelemetryEnableFlag() {
                  << static_cast<int32_t>(parseBoolResult);
     return kDefaultTelemetryEnableValue;
 }
-#endif  // NN_EXPERIMENTAL_FEATURE
-
-int64_t getServerFeatureLevelFlag(
-        std::function<std::string(const std::string&, const std::string&, const std::string&)>
-                serverFunc) {
-    const std::string featureLevelString =
-            serverFunc(kExprCategoryName, kCurrentFeatureLevelFlagName,
-                       std::to_string(kDefaultFeatureLevelNum));
-
-    int64_t featureLevel = kDefaultFeatureLevelNum;
-    const bool success = base::ParseInt(featureLevelString, &featureLevel, kMinFeatureLevelNum,
-                                        kMaxFeatureLevelNum);
-    if (!success) {
-        LOG(WARNING) << "Failed to parse result of GetServerConfigurableFlag, errno=" << errno;
-    }
-    return featureLevel;
-}
 
 #endif  // NN_COMPATIBILITY_LIBRARY_BUILD
 
@@ -86,6 +88,8 @@ Version serverFeatureLevelToVersion(int64_t serverFeatureLevel) {
             return kVersionFeatureLevel6;
         case 7:
             return kVersionFeatureLevel7;
+        case 8:
+            return kVersionFeatureLevel8;
         default:
             LOG(FATAL) << "Invalid feature level flag value " << serverFeatureLevel;
             return {};
