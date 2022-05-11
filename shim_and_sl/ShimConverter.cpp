@@ -58,6 +58,8 @@ ANeuralNetworksModel* convertSubgraphFromHAL(
     const auto& subgraph = subgraphIndex == 0 ? model.main : model.referenced[subgraphIndex - 1];
     ::android::nn::sl_wrapper::Model resultModel(nnapi);
 
+    resultModel.relaxComputationFloat32toFloat16(model.relaxComputationFloat32toFloat16);
+
     auto getExtensionName = [&](uint16_t prefix) -> const std::string* {
         for (const auto& nameToPrefix : model.extensionNameToPrefix) {
             if (prefix == nameToPrefix.prefix) {
@@ -487,7 +489,8 @@ std::unique_ptr<::android::nn::sl_wrapper::Memory> convertFromHAL(
             return memory;
         }
     }
-    LOG(ERROR) << "Can't convert to SL Memory, unknown pool tag: " << pool.getTag();
+    LOG(ERROR) << "Can't convert to SL Memory, unknown pool tag: "
+               << utils::underlyingType(pool.getTag());
     return nullptr;
 }
 

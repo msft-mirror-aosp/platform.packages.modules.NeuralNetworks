@@ -16,8 +16,8 @@
 
 // Classes used to plan how to execute a model across multiple devices.
 
-#ifndef ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_PLAN_H
-#define ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_PLAN_H
+#ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_PLAN_H
+#define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_PLAN_H
 
 #include <LegacyUtils.h>
 #include <TokenHasher.h>
@@ -303,6 +303,10 @@ class ExecutionStep {
             const std::map<SourceOperandIndex, uint32_t>& sourceOperandToOutputIndex,
             const std::map<SourceOperandIndex, ConstantReferenceLocation>&
                     sourceOperandToConstantReference) const;
+
+    bool hasNoInputsOrNoOutputs() const {
+        return mStepModelInputs.empty() || mStepModelOutputs.empty();
+    }
 
     void dump() const;
 
@@ -709,7 +713,7 @@ class ExecutionPlan {
 
     // simulateFailureResultCode == ANEURALNETWORKS_NO_ERROR means behave normally.
     int finish(int32_t executionPreference, int32_t priority, const OptionalTimePoint& deadline,
-               int simulateFailureResultCode);
+               const std::vector<TokenValuePair>& metaData, int simulateFailureResultCode);
 
     void recordOutputDef(SourceOperandIndex sourceOperandIndex, uint32_t stepIndex);
     void recordTemporaryDef(SourceOperandIndex sourceOperandIndex, uint32_t stepIndex);
@@ -773,6 +777,7 @@ class ExecutionPlan {
     //     model not contain any control flow operations.
     std::set<uint32_t> forTest_flatGetDynamicTemporaries() const;
     const uint8_t* forTest_simpleGetCacheToken() const;
+    bool forTest_hasStepModelWithNoInputsOrNoOutputs() const;
 
    private:
     // Becomes a new COMPOUND step if mState == EMPTY, otherwise does nothing.
@@ -829,8 +834,10 @@ class ExecutionPlan {
         virtual void dump() const = 0;
         virtual int finish(const SourceModels* sourceModels, int32_t executionPreference,
                            int32_t priority, const OptionalTimePoint& deadline,
+                           const std::vector<TokenValuePair>& metadata,
                            int simulateFailureResultCode) = 0;
         virtual bool hasDynamicTemporaries() const = 0;
+        virtual bool hasStepModelWithNoInputsOrNoOutputs() const = 0;
         virtual void forEachStepRoleOfInput(uint32_t index,
                                             const StepRoleCallback& callback) const = 0;
         virtual void forEachStepRoleOfOutput(uint32_t index,
@@ -845,8 +852,10 @@ class ExecutionPlan {
 
         void dump() const override;
         int finish(const SourceModels* sourceModels, int32_t executionPreference, int32_t priority,
-                   const OptionalTimePoint& deadline, int simulateFailureResultCode) override;
+                   const OptionalTimePoint& deadline, const std::vector<TokenValuePair>& metadata,
+                   int simulateFailureResultCode) override;
         bool hasDynamicTemporaries() const override { return false; }
+        bool hasStepModelWithNoInputsOrNoOutputs() const override { return false; }
         void forEachStepRoleOfInput(uint32_t index,
                                     const StepRoleCallback& callback) const override;
         void forEachStepRoleOfOutput(uint32_t index,
@@ -865,8 +874,10 @@ class ExecutionPlan {
 
         void dump() const override;
         int finish(const SourceModels* sourceModels, int32_t executionPreference, int32_t priority,
-                   const OptionalTimePoint& deadline, int simulateFailureResultCode) override;
+                   const OptionalTimePoint& deadline, const std::vector<TokenValuePair>& metadata,
+                   int simulateFailureResultCode) override;
         bool hasDynamicTemporaries() const override { return mHasDynamicTemporaries; }
+        bool hasStepModelWithNoInputsOrNoOutputs() const override;
         void forEachStepRoleOfInput(uint32_t index,
                                     const StepRoleCallback& callback) const override;
         void forEachStepRoleOfOutput(uint32_t index,
@@ -1003,4 +1014,4 @@ inline std::ostream& operator<<(std::ostream& out, ExecutionPlan::Kind kind) {
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_FRAMEWORKS_ML_NN_RUNTIME_EXECUTION_PLAN_H
+#endif  // ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_EXECUTION_PLAN_H
