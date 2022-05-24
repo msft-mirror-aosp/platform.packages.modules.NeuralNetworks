@@ -131,7 +131,7 @@ struct OperandTypeWithExtraParams {
         if (operandType.dimensionCount < that.operandType.dimensionCount) return true;
         return false;
     }
-};  // namespace
+};
 
 // Generates valid and invalid mutations of given OperandTypeWithParams
 // instances.
