@@ -1,59 +1,78 @@
 model {
-  main {
-    operands {
-      operand {
-        type: TENSOR_QUANT8_ASYMM
-        dimensions {
-          dimension: 2
-          dimension: 3
-        }
-        scale: 4
-        zero_point: 100
-        lifetime: SUBGRAPH_INPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 3140853918
-        }
+  operands {
+    operand {
+      type: TENSOR_FLOAT32
+      dimensions {
+        dimension: 2
       }
-      operand {
-        type: TENSOR_QUANT8_ASYMM
-        dimensions {
-          dimension: 2
-          dimension: 3
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_OUTPUT
+      channel_quant {
+        scales {
         }
-        scale: 4
-        zero_point: 100
-        lifetime: SUBGRAPH_OUTPUT
-        channel_quant {
-          scales {
-          }
-        }
-        data {
-          random_seed: 3140853918
-        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 1148662647
       }
     }
-    operations {
-      operation {
-        type: CAST
-        inputs {
-          index: 0
+    operand {
+      type: INT32
+      dimensions {
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: CONSTANT_REFERENCE
+      channel_quant {
+        scales {
         }
-        outputs {
-          index: 1
-        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 173552573
       }
     }
-    input_indexes {
-      index: 0
+    operand {
+      type: TENSOR_FLOAT16
+      dimensions {
+        dimension: 2
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 1823050080
+      }
     }
-    output_indexes {
-      index: 1
+    operand {
+      type: TENSOR_FLOAT32
+      dimensions {
+      }
+      scale: 0
+      zero_point: 0
+      lifetime: SUBGRAPH_INPUT
+      channel_quant {
+        scales {
+        }
+        channel_dim: 0
+      }
+      data {
+        random_seed: 111940216
+      }
     }
   }
-  referenced {
+  operations {
   }
+  input_indexes {
+  }
+  output_indexes {
+    index: 3
+  }
+  is_relaxed: true
 }

@@ -35,7 +35,6 @@
 #include "ExecutionPlan.h"
 #include "Manager.h"
 #include "ModelBuilder.h"
-#include "TypeManager.h"
 
 namespace android {
 namespace nn {
@@ -58,10 +57,6 @@ int CompilationBuilder::finish() {
     }
     // TODO validate the rest
 
-    // Init telemetry info, start measuring compilation time
-    mTelemetryInfo = TelemetryInfo{};
-    const auto scopedTimeNanoMeasurer = TimeNanoMeasurer(&mTelemetryInfo->compilationTimeNanos);
-
     const auto deadline = makeDeadline(mTimeoutDuration);
 
     mFinished = true;
@@ -70,7 +65,7 @@ int CompilationBuilder::finish() {
     }
     if (mPartitioning) {
         int n = mModel->partitionTheWork(mDevices, mPreference, mPriority, deadline, &mPlan,
-                                         mMetadata, mFailPartitioning);
+                                         mFailPartitioning);
         switch (n) {
             case ANEURALNETWORKS_NO_ERROR:
                 return n;
@@ -100,11 +95,10 @@ int CompilationBuilder::finish() {
     }
 
     // Fallback to CPU
-    mTelemetryInfo->fallbackToCpuFromError = true;
     VLOG(COMPILATION) << "CompilationBuilder::finish with CPU fallback";
     mPlan.reset();
     mPlan.becomeSingleStep(DeviceManager::getCpuDevice(), mModel);
-    return mPlan.finish(mPreference, mPriority, deadline, mMetadata, ANEURALNETWORKS_NO_ERROR);
+    return mPlan.finish(mPreference, mPriority, deadline, ANEURALNETWORKS_NO_ERROR);
 }
 
 int CompilationBuilder::setPreference(int32_t preference) {
@@ -140,8 +134,12 @@ int CompilationBuilder::setCaching(const std::string& cacheDir, const uint8_t* t
 }
 
 static GeneralResult<SharedHandle> createCacheHandle(int fd) {
-    base::unique_fd duplicatedFd = NN_TRY(dupFd(fd));
-    return std::make_shared<const Handle>(std::move(duplicatedFd));
+    std::vector<base::unique_fd> fds;
+    fds.push_back(NN_TRY(dupFd(fd)));
+    return std::make_shared<const Handle>(Handle{
+            .fds = std::move(fds),
+            .ints = {},
+    });
 }
 
 static GeneralResult<std::vector<SharedHandle>> createCacheHandleVec(const int* fds,
@@ -219,37 +217,6 @@ int CompilationBuilder::setTimeoutDuration(uint64_t duration) {
     } else {
         mTimeoutDuration.reset();
     }
-    return ANEURALNETWORKS_NO_ERROR;
-}
-
-int CompilationBuilder::addExtensionAttribute(const char* extensionName,
-                                              uint16_t attributeCodeWithinExtension,
-                                              const void* data, size_t length) {
-    if (mFinished) {
-        LOG(ERROR) << "ANeuralNetworksCompilation_addExtensionAttribute can't modify after "
-                      "compilation finished";
-        return ANEURALNETWORKS_BAD_STATE;
-    }
-    if (!mExplicitDeviceList || (mDevices.size() != 1)) {
-        LOG(ERROR) << "ANeuralNetworksCompilation_addExtensionAttribute called on an "
-                      "ANeuralNetworksCompilation that was not created by "
-                      "ANeuralNetworksCompilation_createForDevices with numDevices = 1";
-        return ANEURALNETWORKS_BAD_DATA;
-    }
-    int32_t attributeToken = 0;
-    if (!TypeManager::get()->getExtensionType(extensionName, attributeCodeWithinExtension,
-                                              &attributeToken)) {
-        return ANEURALNETWORKS_BAD_DATA;
-    }
-    if (std::find_if(mMetadata.begin(), mMetadata.end(), [attributeToken](const auto& entry) {
-            return attributeToken == entry.token;
-        }) != mMetadata.end()) {
-        LOG(ERROR) << "ANeuralNetworksCompilation_addExtensionAttribute called more than once for "
-                      "the same attribute";
-        return ANEURALNETWORKS_BAD_DATA;
-    }
-    const uint8_t* dataPtr = reinterpret_cast<const uint8_t*>(data);
-    mMetadata.push_back({attributeToken, std::vector<uint8_t>(dataPtr, dataPtr + length)});
     return ANEURALNETWORKS_NO_ERROR;
 }
 

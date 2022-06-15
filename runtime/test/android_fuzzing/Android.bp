@@ -16,7 +16,10 @@
 
 package {
     // See: http://go/android-license-faq
-    // Inherits all licenses from parent to get Apache 2.0 and package name.
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "packages_modules_NeuralNetworks_runtime_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
     default_applicable_licenses: [
         "packages_modules_NeuralNetworks_runtime_license",
     ],
@@ -24,7 +27,6 @@ package {
 
 cc_library_static {
     name: "libneuralnetworks_fuzzer_proto",
-    host_supported: true,
     owner: "google",
     srcs: ["Model.proto"],
     proto: {
@@ -36,7 +38,6 @@ cc_library_static {
 
 cc_library_static {
     name: "libneuralnetworks_fuzzer_harness",
-    host_supported: true,
     owner: "google",
     srcs: [
         "Converter.cpp",
@@ -44,24 +45,21 @@ cc_library_static {
         "StaticAssert.cpp",
     ],
     shared_libs: [
+        "android.hidl.memory@1.0",
+        "libhidlmemory",
+        "libnativewindow",
         "libprotobuf-cpp-full",
     ],
     static_libs: [
         "libneuralnetworks_common",
         "libneuralnetworks_generated_test_harness",
-        "neuralnetworks_types",
+        "libneuralnetworks_static",
     ],
     whole_static_libs: [
         "libneuralnetworks_fuzzer_proto",
         "libprotobuf-mutator",
+        "neuralnetworks_types",
     ],
-    target: {
-        android: {
-            shared_libs: [
-                "libnativewindow",
-            ],
-        },
-    },
 }
 
 filegroup {
@@ -71,7 +69,6 @@ filegroup {
 
 cc_defaults {
     name: "libneuralnetworks_fuzzer_defaults",
-    host_supported: true,
     shared_libs: ["libprotobuf-cpp-full"],
     static_libs: ["libneuralnetworks_fuzzer_harness"],
     corpus: [":libneuralnetworks_fuzzer_corpus"],
