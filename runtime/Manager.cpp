@@ -91,7 +91,9 @@ Version getRuntimeFeatureLevelVersion() {
 
 bool getWhetherPlatformTelemetryIsEnabled() {
 #if !defined(NN_COMPATIBILITY_LIBRARY_BUILD) && !defined(NN_EXPERIMENTAL_FEATURE)
-    return getServerTelemetryEnableFlag();
+    // b/287186978, force enable telemetry on the platform NNAPI
+    // return getServerTelemetryEnableFlag();
+    return true;
 #else   // !defined(NN_COMPATIBILITY_LIBRARY_BUILD) && !defined(NN_EXPERIMENTAL_FEATURE)
     return false;
 #endif  // !defined(NN_COMPATIBILITY_LIBRARY_BUILD) && !defined(NN_EXPERIMENTAL_FEATURE)
