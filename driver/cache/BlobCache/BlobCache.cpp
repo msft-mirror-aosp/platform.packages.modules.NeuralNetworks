@@ -46,6 +46,7 @@ static int property_get(const char* key, char* value, const char* default_value)
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <memory>
 
 namespace android {

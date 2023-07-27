@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <functional>
 #include <thread>
 
 // Cache file header

@@ -10,6 +10,7 @@
 #include <public/gemmlowp.h>
 #pragma clang diagnostic pop
 
+#include <cassert>
 #include <limits>
 #include <memory>
 
