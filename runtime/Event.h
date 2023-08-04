@@ -20,6 +20,7 @@
 #include <android-base/logging.h>
 #include <nnapi/Types.h>
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <utility>

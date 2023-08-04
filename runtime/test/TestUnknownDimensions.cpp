@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <functional>
 #include <string>
 #include <tuple>
 #include <vector>

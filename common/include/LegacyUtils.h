@@ -24,6 +24,7 @@
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 
+#include <functional>
 #include <tuple>
 #include <utility>
 #include <vector>

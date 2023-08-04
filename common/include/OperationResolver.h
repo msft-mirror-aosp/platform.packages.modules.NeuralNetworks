@@ -17,6 +17,7 @@
 #ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATION_RESOLVER_H
 #define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_COMMON_OPERATION_RESOLVER_H
 
+#include <functional>
 #include <utility>
 
 #include "OperationsExecutionUtils.h"
