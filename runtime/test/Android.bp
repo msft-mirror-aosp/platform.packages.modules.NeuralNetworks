@@ -423,12 +423,12 @@ cc_fuzz {
 
 // Temporarily disabled due to b/139889855.
 cc_test {
-    name: "NeuralNetworksTest_static_hwasan",
+    name: "NeuralNetworksTest_static_asan",
     host_supported: false,
     defaults: ["NeuralNetworksTest_static_defaults"],
     enabled: false,
     sanitize: {
-        hwaddress: true,
+        address: true,
     },
     // Declare explicit library dependency for continuous builds
     required: ["libclang_rt.asan"],
@@ -493,11 +493,11 @@ cc_test {
 // Temporarily disabled due to b/139889855.
 cc_test {
     // Note: tsan not supported on Android (yet)
-    name: "NeuralNetworksTest_mt_static_hwasan",
+    name: "NeuralNetworksTest_mt_static_asan",
     defaults: ["NeuralNetworksTest_mt_defaults"],
     enabled: false,
     sanitize: {
-        hwaddress: true,
+        address: true,
     },
 }
 
@@ -705,9 +705,6 @@ cc_library_static {
             shared_libs: [
                 "libandroid",
             ],
-            sanitize: {
-                 hwaddress: true,
-            },
         },
         host: {
             static_libs: [
@@ -719,9 +716,6 @@ cc_library_static {
                 "-D__ANDROID_API_S__=31",
                 "-D__INTRODUCED_IN(n)=",
             ],
-            sanitize: {
-                 address: true,
-            },
         },
     },
     arch: {
@@ -736,6 +730,7 @@ cc_library_static {
        },
     },
     sanitize: {
+        address: true,
         all_undefined: true,
     },
     strip: {
