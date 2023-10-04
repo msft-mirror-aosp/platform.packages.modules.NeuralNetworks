@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <functional>
 #include <memory>
 #include <string>
 #include <thread>

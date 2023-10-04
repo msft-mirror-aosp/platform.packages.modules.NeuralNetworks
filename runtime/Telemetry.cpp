@@ -19,6 +19,7 @@
 #include "Telemetry.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>

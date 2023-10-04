@@ -20,6 +20,7 @@
 #include <nnapi/Types.h>
 #include <stdint.h>
 
+#include <functional>
 #include <string>
 
 #include "NeuralNetworks.h"
