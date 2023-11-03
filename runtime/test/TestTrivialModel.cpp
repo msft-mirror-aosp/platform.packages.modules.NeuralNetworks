@@ -37,7 +37,8 @@ class TrivialTest : public ::testing::Test {
     virtual void SetUp() {}
 
 #if defined(__ANDROID__)
-    void testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage);
+    void testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage,
+                                           bool allowAllocationFailure);
 #endif
 
     const Matrix3x4 matrix1 = {{1.f, 2.f, 3.f, 4.f}, {5.f, 6.f, 7.f, 8.f}, {9.f, 10.f, 11.f, 12.f}};
@@ -133,7 +134,8 @@ TEST_F(TrivialTest, AddTwo) {
 // Hardware buffers are an Android concept, which aren't necessarily
 // available on other platforms such as ChromeOS, which also build NNAPI.
 #if defined(__ANDROID__)
-void TrivialTest::testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage) {
+void TrivialTest::testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage,
+                                                    bool allowAllocationFailure) {
     Model modelAdd2;
     CreateAddTwoTensorModel(&modelAdd2);
 
@@ -147,7 +149,11 @@ void TrivialTest::testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage
             .usage = cpuUsage | additionalAhwbUsage,
     };
     AHardwareBuffer* matrix1Buffer = nullptr;
-    ASSERT_EQ(AHardwareBuffer_allocate(&desc, &matrix1Buffer), 0);
+    int err = AHardwareBuffer_allocate(&desc, &matrix1Buffer);
+    if (allowAllocationFailure && err != 0) {
+        GTEST_SKIP() << "Test skipped: AHardwareBuffer_allocate failed";
+    }
+    ASSERT_EQ(err, 0);
     auto allocateGuard = android::base::make_scope_guard(
             [matrix1Buffer]() { AHardwareBuffer_release(matrix1Buffer); });
 
@@ -194,11 +200,13 @@ void TrivialTest::testAddTwoWithHardwareBufferInput(uint64_t additionalAhwbUsage
 }
 
 TEST_F(TrivialTest, AddTwoWithHardwareBufferInput) {
-    testAddTwoWithHardwareBufferInput(/* no additional usage */ 0u);
+    testAddTwoWithHardwareBufferInput(/* no additional usage */ 0u,
+                                      /*allowAllocationFailure=*/false);
 }
 
 TEST_F(TrivialTest, AddTwoWithHardwareBufferInputWithGPUUsage) {
-    testAddTwoWithHardwareBufferInput(AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER);
+    testAddTwoWithHardwareBufferInput(AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER,
+                                      /*allowAllocationFailure=*/true);
 }
 #endif
 
