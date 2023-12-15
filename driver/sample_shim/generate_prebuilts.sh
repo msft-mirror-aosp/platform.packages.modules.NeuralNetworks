@@ -18,7 +18,11 @@ SAMPLE_SL_DRIVER="neuralnetworks_sample_sl_driver"
 
 for arch in ${ARCHS//,/ }
 do
-  lunch "aosp_${arch}-userdebug"
+  if [[ $arch == "arm64" || $arch == "x86_64" ]]; then
+    lunch "aosp_cf_${arch}_phone_pgagnostic-trunk-userdebug"
+  else
+    lunch "aosp_${arch}-trunk-userdebug"
+  fi
 
   LIB=lib
   if [[ $arch =~ "64" ]]; then

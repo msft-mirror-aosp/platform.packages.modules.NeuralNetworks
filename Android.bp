@@ -37,6 +37,7 @@ license {
 
 cc_defaults {
     name: "neuralnetworks_defaults",
+    cpp_std: "gnu++17",
     cflags: [
         "-O3",
         "-Wall",
