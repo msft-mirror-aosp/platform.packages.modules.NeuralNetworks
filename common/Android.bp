@@ -251,6 +251,7 @@ cc_defaults {
     name: "neuralnetworks_cl_defaults",
     host_supported: false,
     vendor_available: false,
+    cpp_std: "gnu++17",
     stl: "libc++_static",
     sdk_version: "current",
     min_sdk_version: "29",

@@ -423,19 +423,6 @@ cc_fuzz {
 
 // Temporarily disabled due to b/139889855.
 cc_test {
-    name: "NeuralNetworksTest_static_asan",
-    host_supported: false,
-    defaults: ["NeuralNetworksTest_static_defaults"],
-    enabled: false,
-    sanitize: {
-        address: true,
-    },
-    // Declare explicit library dependency for continuous builds
-    required: ["libclang_rt.asan"],
-}
-
-// Temporarily disabled due to b/139889855.
-cc_test {
     name: "NeuralNetworksTest_static_ubsan",
     host_supported: false,
     defaults: ["NeuralNetworksTest_static_defaults"],
@@ -488,17 +475,6 @@ cc_defaults {
 cc_test {
     name: "NeuralNetworksTest_mt_static",
     defaults: ["NeuralNetworksTest_mt_defaults"],
-}
-
-// Temporarily disabled due to b/139889855.
-cc_test {
-    // Note: tsan not supported on Android (yet)
-    name: "NeuralNetworksTest_mt_static_asan",
-    defaults: ["NeuralNetworksTest_mt_defaults"],
-    enabled: false,
-    sanitize: {
-        address: true,
-    },
 }
 
 cc_library_static {
@@ -584,6 +560,17 @@ cc_library_static {
                 "-D__INTRODUCED_IN(n)=",
             ],
         },
+    },
+    arch: {
+       // TODO(b/300185114): Disable V until codegen bug fixed.
+       riscv64: {
+           cflags: [
+               "-march=rv64gc_zba_zbb_zbs",
+           ],
+           ldflags: [
+               "-march=rv64gc_zba_zbb_zbs",
+           ],
+       },
     },
     min_sdk_version: "30",
     sdk_version: "current",
@@ -707,8 +694,18 @@ cc_library_static {
             ],
         },
     },
+    arch: {
+       // TODO(b/300185114): Disable V until codegen bug fixed.
+       riscv64: {
+           cflags: [
+               "-march=rv64gc_zba_zbb_zbs",
+           ],
+           ldflags: [
+               "-march=rv64gc_zba_zbb_zbs",
+           ],
+       },
+    },
     sanitize: {
-        address: true,
         all_undefined: true,
     },
     strip: {

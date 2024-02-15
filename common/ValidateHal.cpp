@@ -21,6 +21,7 @@
 #include <android-base/logging.h>
 
 #include <algorithm>
+#include <functional>
 #include <set>
 #include <utility>
 #include <vector>

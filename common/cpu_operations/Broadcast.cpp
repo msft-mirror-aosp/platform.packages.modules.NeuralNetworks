@@ -21,6 +21,7 @@
 #include "Broadcast.h"
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
 #include "IndexedShapeWrapper.h"
