@@ -561,17 +561,6 @@ cc_library_static {
             ],
         },
     },
-    arch: {
-       // TODO(b/300185114): Disable V until codegen bug fixed.
-       riscv64: {
-           cflags: [
-               "-march=rv64gc_zba_zbb_zbs",
-           ],
-           ldflags: [
-               "-march=rv64gc_zba_zbb_zbs",
-           ],
-       },
-    },
     min_sdk_version: "30",
     sdk_version: "current",
     stl: "libc++_static",
@@ -693,17 +682,6 @@ cc_library_static {
                 "-D__INTRODUCED_IN(n)=",
             ],
         },
-    },
-    arch: {
-       // TODO(b/300185114): Disable V until codegen bug fixed.
-       riscv64: {
-           cflags: [
-               "-march=rv64gc_zba_zbb_zbs",
-           ],
-           ldflags: [
-               "-march=rv64gc_zba_zbb_zbs",
-           ],
-       },
     },
     sanitize: {
         all_undefined: true,
