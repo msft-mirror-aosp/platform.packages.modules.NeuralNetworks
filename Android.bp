@@ -45,15 +45,6 @@ cc_defaults {
         "-Wextra",
     ],
     arch: {
-        // TODO(b/300185114): Disable V until codegen bug fixed.
-        riscv64: {
-            cflags: [
-                "-march=rv64gc_zba_zbb_zbs",
-            ],
-            ldflags: [
-                "-march=rv64gc_zba_zbb_zbs",
-            ],
-        },
         x86: {
             avx2: {
                 cflags: [
