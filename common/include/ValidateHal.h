@@ -20,6 +20,7 @@
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Validation.h>
 
+#include <functional>
 #include <set>
 #include <tuple>
 

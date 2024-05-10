@@ -17,6 +17,7 @@
 #ifndef ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_TELEMETRY_H
 #define ANDROID_PACKAGES_MODULES_NEURALNETWORKS_RUNTIME_TELEMETRY_H
 
+#include <functional>
 #include <string>
 
 #include "CompilationBuilder.h"

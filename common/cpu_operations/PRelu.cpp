@@ -19,6 +19,7 @@
 #include "PRelu.h"
 
 #include <algorithm>
+#include <functional>
 #include <vector>
 
 #include "IndexedShapeWrapper.h"

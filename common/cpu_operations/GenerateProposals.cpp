@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <functional>
 #include <numeric>
 #include <utility>
 #include <vector>

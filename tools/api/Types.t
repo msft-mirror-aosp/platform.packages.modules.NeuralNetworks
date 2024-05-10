@@ -25,6 +25,7 @@
 
 #include <array>
 #include <chrono>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <optional>
