@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 
 #include <algorithm>
+#include <functional>
 #include <future>
 #include <limits>
 #include <set>

@@ -20,6 +20,7 @@
 #include <android-base/logging.h>
 #include <dlfcn.h>
 
+#include <cassert>
 #include <memory>
 #include <string>
 #include <variant>

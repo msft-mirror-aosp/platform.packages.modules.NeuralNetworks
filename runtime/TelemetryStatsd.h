@@ -21,6 +21,7 @@
 
 #include <array>
 #include <condition_variable>
+#include <functional>
 #include <limits>
 #include <map>
 #include <mutex>

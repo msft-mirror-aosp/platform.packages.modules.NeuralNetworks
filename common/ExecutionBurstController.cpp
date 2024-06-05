@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
