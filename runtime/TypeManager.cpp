@@ -42,15 +42,6 @@
 namespace android {
 namespace nn {
 
-// Replacement function for std::string_view::starts_with()
-// which shall be available in C++20.
-#if __cplusplus >= 202000L
-#error "When upgrading to C++20, remove this error and file a bug to remove this workaround."
-#endif
-inline bool StartsWith(std::string_view sv, std::string_view prefix) {
-    return sv.substr(0u, prefix.size()) == prefix;
-}
-
 namespace {
 
 constexpr uint32_t kMaxPrefix = (1 << kExtensionPrefixBits) - 1;
@@ -97,7 +88,7 @@ std::vector<std::string> getVendorExtensionAllowlistedApps() {
     while (std::getline(streamData, line)) {
         // Do some basic validity check on entry, it's either
         // fs path or package name.
-        if (StartsWith(line, "/") || line.find('.') != std::string::npos) {
+        if (line.starts_with("/") || line.find('.') != std::string::npos) {
             allowlist.push_back(line);
         } else {
             LOG(ERROR) << kAppAllowlistPath << " - Invalid entry: " << line;
@@ -140,19 +131,19 @@ bool TypeManager::isExtensionsUseAllowed(const AppInfoFetcher::AppInfo& appPacka
                                          const std::vector<std::string>& allowlist) {
     // Only selected partitions and user-installed apps (/data)
     // are allowed to use extensions.
-    if (StartsWith(appPackageInfo.binaryPath, "/vendor/") ||
-        StartsWith(appPackageInfo.binaryPath, "/odm/") ||
-        StartsWith(appPackageInfo.binaryPath, "/data/") ||
-        (StartsWith(appPackageInfo.binaryPath, "/product/") && useOnProductImageEnabled)) {
+    if (appPackageInfo.binaryPath.starts_with("/vendor/") ||
+        appPackageInfo.binaryPath.starts_with("/odm/") ||
+        appPackageInfo.binaryPath.starts_with("/data/") ||
+        (appPackageInfo.binaryPath.starts_with("/product/") && useOnProductImageEnabled)) {
         if (allowVendorExtensionsForAllNonSystemClients()) {
             return true;
         }
 #ifdef NN_DEBUGGABLE
         // Only on userdebug and eng builds.
         // When running tests with mma and adb push.
-        if (StartsWith(appPackageInfo.binaryPath, "/data/nativetest") ||
+        if (appPackageInfo.binaryPath.starts_with("/data/nativetest") ||
             // When running tests with Atest.
-            StartsWith(appPackageInfo.binaryPath, NN_TMP_DIR "/NeuralNetworksTest_")) {
+            appPackageInfo.binaryPath.starts_with(NN_TMP_DIR "/NeuralNetworksTest_")) {
             return true;
         }
 #endif  // NN_DEBUGGABLE
