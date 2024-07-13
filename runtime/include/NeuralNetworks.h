@@ -55,7 +55,7 @@
 #endif  // __ANDROID__
 
 #if !defined(__DEPRECATED_IN)
-#define __DEPRECATED_IN(api_level) __attribute__((annotate("deprecated_in=" #api_level)))
+#define __DEPRECATED_IN(api_level, msg) __attribute__((annotate("deprecated_in=" #api_level)))
 #endif
 
 // This is required for building libneuralnetworks_cl,
@@ -66,7 +66,8 @@
 #define __NNAPI_DEPRECATED_IN(x)
 #else
 #define __NNAPI_INTRODUCED_IN(x) __INTRODUCED_IN(x)
-#define __NNAPI_DEPRECATED_IN(x) __DEPRECATED_IN(x)
+#define __NNAPI_DEPRECATED_IN(x) \
+    __DEPRECATED_IN(x, "NN API is deprecated. Users should migrate to TFlite.")
 #endif
 
 #ifndef __NNAPI_FL5_MIN_ANDROID_API__
