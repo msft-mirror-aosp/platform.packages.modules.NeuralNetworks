@@ -156,7 +156,6 @@ cc_defaults {
 
     shared_libs: [
         "libbinder_ndk",
-        "libcgrouprc",
         "liblog",
         "libneuralnetworks_packageinfo",
     ],
