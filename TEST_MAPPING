@@ -4,6 +4,11 @@
       "name": "CtsNNAPITestCases[com.google.android.neuralnetworks.apex]"
     }
   ],
+  "neuralnetworks-mainline-presubmit": [
+    {
+      "name": "CtsNNAPITestCases"
+    }
+  ],
   "presubmit": [
     {
       "name": "NeuralNetworksTest_utils"
