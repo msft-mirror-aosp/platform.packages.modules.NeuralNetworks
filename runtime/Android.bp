@@ -156,7 +156,6 @@ cc_defaults {
 
     shared_libs: [
         "libbinder_ndk",
-        "libcgrouprc",
         "liblog",
         "libneuralnetworks_packageinfo",
     ],
@@ -332,9 +331,6 @@ ndk_library {
     symbol_file: "libneuralnetworks.map.txt",
     // Android O-MR1
     first_version: "27",
-    export_header_libs: [
-        "libneuralnetworks_ndk_headers",
-    ],
 }
 
 genrule {
