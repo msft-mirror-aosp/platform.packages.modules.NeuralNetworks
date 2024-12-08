@@ -63,7 +63,4 @@ java_sdk_library {
             "-XepOpt:NullAway:AnnotatedPackages=android.service.ondeviceintelligence",
         ],
     },
-    lint: {
-        baseline_filename: "lint-baseline.xml",
-    },
 }

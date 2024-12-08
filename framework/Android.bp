@@ -71,9 +71,6 @@ java_sdk_library {
         "unsupportedappusage",
     ],
     jarjar_rules: "jarjar-rules.txt",
-    lint: {
-        baseline_filename: "lint-baseline.xml",
-    },
 }
 
 platform_compat_config {
