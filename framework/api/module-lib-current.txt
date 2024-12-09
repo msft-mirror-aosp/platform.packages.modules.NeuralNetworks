@@ -1,0 +1,9 @@
+// Signature format: 2.0
+package android.app.ondeviceintelligence {
+
+  @FlaggedApi("android.app.ondeviceintelligence.flags.enable_on_device_intelligence") public class OnDeviceIntelligenceFrameworkInitializer {
+    method public static void registerServiceWrappers();
+  }
+
+}
+
