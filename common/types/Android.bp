@@ -29,7 +29,6 @@ cc_defaults {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     min_sdk_version: "30",
     target: {
