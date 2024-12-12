@@ -59,10 +59,6 @@ apex {
     ],
     manifest: "manifest.json",
     prebuilts: ["current_sdkinfo"],
-    visibility: [
-        "//packages/modules/common/build",
-        "//build/make/target/product/generic",
-    ],
     bootclasspath_fragments: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
         true: ["com.android.ondeviceintelligence-bootclasspath-fragment"],
         default: [],
