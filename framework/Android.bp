@@ -19,24 +19,22 @@ package {
 java_sdk_library {
     name: "framework-ondeviceintelligence-platform",
     srcs: [
-        ":framework-ondeviceintelligence-sources",
-        ":module-utils-future-aidls",
+        ":framework-ondeviceintelligence-sources-platform",
     ],
     defaults: ["framework-non-updatable-unbundled-defaults"],
     impl_library_visibility: [
         "//frameworks/base:__subpackages__",
     ],
     static_libs: [
-        "modules-utils-infra",
         "android.app.ondeviceintelligence-aconfig-java",
     ],
     aidl: {
         include_dirs: [
             "frameworks/base/core/java",
+            "frameworks/base/packages/NeuralNetworks/framework/platform/java",
             "frameworks/native/aidl/binder", // For PersistableBundle.aidl
         ],
     },
-    jarjar_rules: "jarjar-rules.txt",
 }
 
 java_sdk_library {
@@ -67,6 +65,11 @@ java_sdk_library {
         "modules-utils-preconditions",
         "modules-utils-infra",
     ],
+    aidl: {
+        include_dirs: [
+            "frameworks/base/packages/NeuralNetworks/framework/module/java",
+        ],
+    },
     libs: [
         "unsupportedappusage",
     ],
