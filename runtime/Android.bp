@@ -57,9 +57,9 @@ cc_library_headers {
     min_sdk_version: "30",
     apex_available: [
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks", // Due to the dependency from libneuralnetworks_common
-        // that is available to the platform
 
+        // Due to the dependency from libneuralnetworks_common
+        // that is available to the platform
         "//apex_available:platform",
     ],
 }
@@ -210,10 +210,7 @@ cc_library_shared {
         "neuralnetworks_defaults",
     ],
     min_sdk_version: "30",
-    apex_available: [
-        "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
-    ],
+    apex_available: ["com.android.neuralnetworks"],
     stubs: {
         versions: [
             "30",
