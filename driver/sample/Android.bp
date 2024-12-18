@@ -146,5 +146,12 @@ cc_fuzz {
         cc: [
             "butlermichael@google.com",
         ],
+        triage_assignee: "waghpawan@google.com",
+        componentid: 195575,
+        description: "The fuzzer targets the APIs of libneuralnetworks_common",
+        vector: "host_access",
+        service_privilege: "nsi",
+        users: "single_user",
+        fuzzed_code_usage: "experimental",
     },
 }
