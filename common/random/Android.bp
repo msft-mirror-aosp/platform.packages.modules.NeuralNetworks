@@ -29,7 +29,6 @@ cc_library_headers {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     min_sdk_version: "30",
     sdk_version: "current",
@@ -43,7 +42,6 @@ cc_library_static {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     srcs: [
         "guarded_philox_random.cc",
@@ -68,7 +66,6 @@ cc_library_static {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     srcs: [
         "guarded_philox_random.cc",
