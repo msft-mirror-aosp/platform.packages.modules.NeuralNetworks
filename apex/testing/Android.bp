@@ -27,6 +27,7 @@ apex_test {
     defaults: ["com.android.neuralnetworks-defaults"],
     manifest: "test_apex_manifest.json",
     file_contexts: ":com.android.neuralnetworks-file_contexts",
+    apex_available_name: "com.android.neuralnetworks",
     // Test APEX, should never be installed
     installable: false,
 }
