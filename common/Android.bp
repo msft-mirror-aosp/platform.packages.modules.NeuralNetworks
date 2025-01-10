@@ -120,7 +120,6 @@ cc_defaults {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     vendor_available: true,
     // b/109953668, disable OpenMP
@@ -271,7 +270,6 @@ cc_defaults {
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "test_com.android.neuralnetworks",
     ],
     // b/109953668, disable OpenMP
     // openmp: true,
