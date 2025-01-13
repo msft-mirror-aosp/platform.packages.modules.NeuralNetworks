@@ -54,6 +54,67 @@ apex_defaults {
 
 apex {
     name: "com.android.neuralnetworks",
-    defaults: ["com.android.neuralnetworks-defaults"],
+    defaults: [
+        "com.android.neuralnetworks-defaults",
+    ],
     manifest: "manifest.json",
+    prebuilts: ["current_sdkinfo"],
+    bootclasspath_fragments: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: ["com.android.ondeviceintelligence-bootclasspath-fragment"],
+        default: [],
+    }),
+    systemserverclasspath_fragments: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: ["com.android.ondeviceintelligence-systemserverclasspath-fragment"],
+        default: [],
+    }),
+}
+
+sdk {
+    enabled: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: true,
+        default: false,
+    }),
+    name: "neuralnetworks-module-sdk",
+    apexes: [
+        // Adds exportable dependencies of the APEX to the sdk,
+        // e.g. *classpath_fragments.
+        "com.android.neuralnetworks",
+    ],
+}
+
+// Encapsulate the contributions made by com.android.neuralnetworks to the bootclasspath.
+bootclasspath_fragment {
+    enabled: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: true,
+        default: false,
+    }),
+    name: "com.android.ondeviceintelligence-bootclasspath-fragment",
+    contents: ["framework-ondeviceintelligence"],
+    apex_available: ["com.android.neuralnetworks"],
+    hidden_api: {
+        split_packages: ["*"],
+    },
+    additional_stubs: [
+        "android-non-updatable",
+    ],
+    // The bootclasspath_fragments that provide APIs on which this depends.
+    fragments: [
+        {
+            apex: "com.android.art",
+            module: "art-bootclasspath-fragment",
+        },
+    ],
+}
+
+// Encapsulate the contributions made by the com.android.crashrecovery to the systemserverclasspath.
+systemserverclasspath_fragment {
+    // This fragment will be enabled using release_crashrecovery_module flag
+    enabled: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: true,
+        default: false,
+    }),
+
+    name: "com.android.ondeviceintelligence-systemserverclasspath-fragment",
+    contents: ["service-ondeviceintelligence"],
+    apex_available: ["com.android.neuralnetworks"],
 }
