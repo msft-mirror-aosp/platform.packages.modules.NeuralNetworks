@@ -67,6 +67,10 @@ apex {
         true: ["com.android.ondeviceintelligence-systemserverclasspath-fragment"],
         default: [],
     }),
+    licenses: [
+        "packages_modules_NeuralNetworks_license",
+        "opensourcerequest",
+    ],
 }
 
 sdk {
