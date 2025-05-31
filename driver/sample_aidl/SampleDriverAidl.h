@@ -21,6 +21,7 @@
 #include <nnapi/hal/aidl/BufferTracker.h>
 #include <nnapi/hal/aidl/HalInterfaces.h>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <utility>

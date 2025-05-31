@@ -22,6 +22,7 @@
 #include <cfloat>
 #include <cmath>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include "OperationResolver.h"
