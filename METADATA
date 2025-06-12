@@ -1,3 +1,4 @@
+name: "AndroidNeuralNetworks"
 third_party {
   license_note: "Would be NOTICE save for MPL in runtime/NOTICE"
   license_type: RECIPROCAL
