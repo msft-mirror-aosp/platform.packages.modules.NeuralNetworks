@@ -35,6 +35,7 @@ java_sdk_library {
     proto: {
         type: "nano",
     },
+    enabled: false,
     static_libs: [
         "android.app.ondeviceintelligence-aconfig-java",
         "modules-utils-shell-command-handler",
