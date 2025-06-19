@@ -39,6 +39,7 @@ java_sdk_library {
 
 java_sdk_library {
     name: "framework-ondeviceintelligence",
+    enabled: false,
     srcs: [
         ":framework-ondeviceintelligence-sources",
         ":module-utils-future-aidls",
