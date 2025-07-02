@@ -190,9 +190,5 @@ package android.service.ondeviceintelligence {
     field public static final int LIFECYCLE_EVENT_MODEL_UNLOADED = 2; // 0x2
   }
 
-  @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public static final class OnDeviceSandboxedInferenceService.UpdateProcessingStateKeys {
-    field public static final String KEY_DEVICE_CONFIG_UPDATE = "device_config_update";
-  }
-
 }
 
