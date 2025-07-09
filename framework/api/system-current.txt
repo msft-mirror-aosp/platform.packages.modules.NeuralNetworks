@@ -180,6 +180,7 @@ package android.service.ondeviceintelligence {
     method @NonNull public abstract void onTokenInfoRequest(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, @Nullable android.os.CancellationSignal, @NonNull android.os.OutcomeReceiver<android.app.ondeviceintelligence.TokenInfo,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method public abstract void onUpdateProcessingState(@NonNull android.os.Bundle, @NonNull android.os.OutcomeReceiver<android.os.PersistableBundle,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method public final java.io.FileInputStream openFileInput(@NonNull String) throws java.io.FileNotFoundException;
+    field @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public static final String KEY_DEVICE_CONFIG_UPDATE = "android.service.ondeviceintelligence.KEY_DEVICE_CONFIG_UPDATE";
     field public static final String SERVICE_INTERFACE = "android.service.ondeviceintelligence.OnDeviceSandboxedInferenceService";
   }
 
@@ -188,10 +189,6 @@ package android.service.ondeviceintelligence {
     field public static final int LIFECYCLE_EVENT_ATTEMPTING_MODEL_LOADING = 3; // 0x3
     field public static final int LIFECYCLE_EVENT_MODEL_LOADED = 1; // 0x1
     field public static final int LIFECYCLE_EVENT_MODEL_UNLOADED = 2; // 0x2
-  }
-
-  @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public static final class OnDeviceSandboxedInferenceService.UpdateProcessingStateKeys {
-    field public static final String KEY_DEVICE_CONFIG_UPDATE = "device_config_update";
   }
 
 }
