@@ -50,7 +50,7 @@ package android.app.ondeviceintelligence {
     field public static final int FEATURE_STATUS_UNAVAILABLE = 0; // 0x0
   }
 
-  @FlaggedApi("android.app.ondeviceintelligence.flags.enable_on_device_intelligence_module") public final class InferenceInfo implements android.os.Parcelable {
+  @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public final class InferenceInfo implements android.os.Parcelable {
     method public int describeContents();
     method public long getEndTimeMillis();
     method public long getStartTimeMillis();
