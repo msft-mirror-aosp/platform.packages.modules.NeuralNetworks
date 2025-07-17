@@ -68,8 +68,8 @@ apex {
         default: [],
     }),
     licenses: [
-        "packages_modules_NeuralNetworks_license",
         "opensourcerequest",
+        "packages_modules_NeuralNetworks_license",
     ],
 }
 

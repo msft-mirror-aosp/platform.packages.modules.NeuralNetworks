@@ -22,3 +22,10 @@ flag {
     description: "Add improvements to on device intelligence APIs."
     bug: "372658837"
 }
+
+flag {
+     namespace: "ondeviceintelligence"
+     name: "dmabuf_info"
+     description: "System API to retrieve DMABuf stats"
+     bug: "416283422"
+}
