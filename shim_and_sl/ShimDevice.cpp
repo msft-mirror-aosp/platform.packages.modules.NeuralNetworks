@@ -589,7 +589,7 @@ ndk::ScopedAStatus ShimDevice::prepareModelCommon(
     }
     if (!compilationHints.empty() || !extensionNameToPrefix.empty()) {
         std::unordered_map<uint16_t, std::string> prefixToName;
-        for (const auto [name, prefix] : extensionNameToPrefix) {
+        for (const auto& [name, prefix] : extensionNameToPrefix) {
             prefixToName.emplace(prefix, name);
         }
 
