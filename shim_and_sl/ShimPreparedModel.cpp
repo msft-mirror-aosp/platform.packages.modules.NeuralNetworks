@@ -34,6 +34,7 @@
 #include <chrono>
 #include <limits>
 #include <memory>
+#include <string>
 #include <thread>
 #include <unordered_map>
 #include <utility>
@@ -164,7 +165,7 @@ ErrorStatus ShimPreparedModel::parseInputs(
 
     if (!executionHints.empty() || !extensionNameToPrefix.empty()) {
         std::unordered_map<uint16_t, std::string> prefixToName;
-        for (const auto [name, prefix] : extensionNameToPrefix) {
+        for (const auto& [name, prefix] : extensionNameToPrefix) {
             prefixToName.emplace(prefix, name);
         }
 
