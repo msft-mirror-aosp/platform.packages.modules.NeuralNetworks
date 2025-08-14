@@ -25,34 +25,32 @@ java_sdk_library {
     defaults: ["framework-system-server-module-defaults"],
     sdk_version: "system_server_current",
     apex_available: [
-        "//apex_available:platform",
         "com.android.neuralnetworks",
+        "//apex_available:platform",
     ],
     impl_library_visibility: [
-        "//frameworks/base:__subpackages__",
         "//packages/modules/NeuralNetworks:__subpackages__",
+        "//frameworks/base:__subpackages__",
     ],
     proto: {
         type: "nano",
     },
     enabled: false,
-    required: ["libondeviceintelligence_jni"],
     static_libs: [
         "android.app.ondeviceintelligence-aconfig-java",
-        "modules-utils-backgroundthread",
         "modules-utils-shell-command-handler",
+        "modules-utils-backgroundthread",
     ],
     permitted_packages: [
-        "com.android.modules.utils",
-        "com.android.neuralnetworks",
         "com.android.server.ondeviceintelligence",
+        "com.android.neuralnetworks",
+        "com.android.modules.utils",
     ],
     min_sdk_version: "35",
     libs: [
-        "framework-configinfrastructure.stubs.module_lib",
         "framework-ondeviceintelligence.impl",
+        "framework-configinfrastructure.stubs.module_lib",
         "modules-utils-infra",
-        "ondeviceintelligence_jni",
     ],
     jarjar_rules: "jarjar-rules.txt",
     errorprone: {
@@ -60,8 +58,8 @@ java_sdk_library {
             "//external/nullaway:nullaway_plugin",
         ],
         javacflags: [
-            "-Xep:NullAway:ERROR",
             "-XepExcludedPaths:.*/out/soong/.*",
+            "-Xep:NullAway:ERROR",
             "-XepOpt:NullAway:AnnotatedPackages=android.app.ondeviceintelligence",
             "-XepOpt:NullAway:AnnotatedPackages=android.service.ondeviceintelligence",
         ],
