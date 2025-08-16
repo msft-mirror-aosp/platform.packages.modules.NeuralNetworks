@@ -82,13 +82,11 @@ GeneralResult<Mapping> map(const Memory::Ashmem& memory) {
     constexpr off64_t offset = 0;
     constexpr int prot = PROT_READ | PROT_WRITE;
 
-    std::shared_ptr<base::MappedFile> mapping =
-            base::MappedFile::FromFd(memory.fd, offset, memory.size, prot);
-
-    if (mapping == nullptr || mapping->data() == nullptr) {
+    auto maybe_mapping = base::MappedFile::Create(memory.fd.get(), offset, memory.size, prot);
+    if (!maybe_mapping) {
         return NN_ERROR() << "Can't mmap the file descriptor.";
     }
-
+    auto mapping = std::make_shared<base::MappedFile>(std::move(*maybe_mapping));
     return Mapping{
             .pointer = mapping->data(),
             .size = memory.size,
@@ -152,11 +150,12 @@ struct MmapFdMappingContext {
 };
 
 GeneralResult<Mapping> map(const Memory::Fd& memory) {
-    std::shared_ptr<base::MappedFile> mapping =
-            base::MappedFile::FromFd(memory.fd, memory.offset, memory.size, memory.prot);
-    if (mapping == nullptr) {
+    auto maybe_mapping =
+            base::MappedFile::Create(memory.fd.get(), memory.offset, memory.size, memory.prot);
+    if (!maybe_mapping) {
         return NN_ERROR() << "Can't mmap the file descriptor.";
     }
+    auto mapping = std::make_shared<base::MappedFile>(std::move(*maybe_mapping));
     char* data = mapping->data();
 
     const bool writable = (memory.prot & PROT_WRITE) != 0;

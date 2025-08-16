@@ -76,8 +76,8 @@ class MemoryWithPointer : public Memory {
         EXPECT_TRUE(fd.ok());
         const int protect = PROT_READ | PROT_WRITE;
         const size_t offset = 0;
-        auto mapping = base::MappedFile::FromFd(fd.get(), offset, size, protect);
-        EXPECT_NE(mapping, nullptr);
+        auto mapping = base::MappedFile::Create(fd.get(), offset, size, protect);
+        EXPECT_TRUE(mapping.has_value());
 
 #ifdef NNTEST_SLTS
         return std::unique_ptr<MemoryWithPointer>(
@@ -93,15 +93,15 @@ class MemoryWithPointer : public Memory {
    private:
 #ifdef NNTEST_SLTS
     MemoryWithPointer(const NnApiSupportLibrary* nnapi, size_t size, int protect, int fd,
-                      size_t offset, std::unique_ptr<base::MappedFile> mapping)
+                      size_t offset, std::optional<base::MappedFile> mapping)
         : Memory(nnapi, size, protect, fd, offset), mMapping(std::move(mapping)) {}
 #else
     MemoryWithPointer(size_t size, int protect, int fd, size_t offset,
-                      std::unique_ptr<base::MappedFile> mapping)
+                      std::optional<base::MappedFile> mapping)
         : Memory(size, protect, fd, offset), mMapping(std::move(mapping)) {}
 #endif
 
-    std::unique_ptr<base::MappedFile> mMapping;
+    std::optional<base::MappedFile> mMapping;
 };
 
 #ifdef NNTEST_SLTS
