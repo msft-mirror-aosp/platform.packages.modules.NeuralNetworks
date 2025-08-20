@@ -34,7 +34,7 @@ namespace android::nn {
 // Convenience class to manage the file, mapping, and memory object.
 class TestAshmem {
    public:
-    TestAshmem(::android::base::unique_fd fd, std::unique_ptr<::android::base::MappedFile> mapped,
+    TestAshmem(::android::base::unique_fd fd, std::optional<::android::base::MappedFile> mapped,
                test_wrapper::Memory memory)
         : mFd(std::move(fd)), mMapped(std::move(mapped)), mMemory(std::move(memory)) {}
 
@@ -58,7 +58,7 @@ class TestAshmem {
 
         // Map and populate ashmem.
         auto mappedFile =
-                ::android::base::MappedFile::FromFd(fd, 0, length, PROT_READ | PROT_WRITE);
+                ::android::base::MappedFile::Create(fd, 0, length, PROT_READ | PROT_WRITE);
         if (!mappedFile) return nullptr;
         memcpy(mappedFile->data(), data, length);
 
@@ -81,7 +81,7 @@ class TestAshmem {
 
    private:
     ::android::base::unique_fd mFd;
-    std::unique_ptr<::android::base::MappedFile> mMapped;
+    std::optional<::android::base::MappedFile> mMapped;
     test_wrapper::Memory mMemory;
 };
 
