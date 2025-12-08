@@ -39,7 +39,10 @@ java_sdk_library {
 
 java_sdk_library {
     name: "framework-ondeviceintelligence",
-    enabled: false,
+    enabled: select(release_flag("RELEASE_ONDEVICE_INTELLIGENCE_MODULE"), {
+        true: true,
+        default: false,
+    }),
     srcs: [
         ":framework-ondeviceintelligence-sources",
         ":module-utils-future-aidls",
@@ -47,24 +50,24 @@ java_sdk_library {
     defaults: ["framework-module-defaults"],
     sdk_version: "module_current",
     apex_available: [
-        "com.android.neuralnetworks",
         "//apex_available:platform",
+        "com.android.neuralnetworks",
     ],
     permitted_packages: [
         "android.app.ondeviceintelligence",
         "android.service.ondeviceintelligence",
-        "com.android.neuralnetworks.framework.jarjar",
         "com.android.modules.utils",
+        "com.android.neuralnetworks.framework.jarjar",
     ],
     impl_library_visibility: [
-        "//packages/modules/NeuralNetworks:__subpackages__",
         "//frameworks/base:__subpackages__",
+        "//packages/modules/NeuralNetworks:__subpackages__",
     ],
-    min_sdk_version: "35",
+    min_sdk_version: "36",
     static_libs: [
         "android.app.ondeviceintelligence-aconfig-java",
-        "modules-utils-preconditions",
         "modules-utils-infra",
+        "modules-utils-handlerexecutor",
     ],
     aidl: {
         include_dirs: [
