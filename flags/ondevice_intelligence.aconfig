@@ -22,3 +22,10 @@ flag {
     description: "Add improvements to on device intelligence APIs."
     bug: "372658837"
 }
+flag {
+    name: "on_device_intelligence_26q2"
+    is_exported: true
+    namespace: "ondeviceintelligence"
+    description: "Add API improvements to on device intelligence APIs in 26Q2 release."
+    bug: "458658574"
+}
