@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 enum ActivationFn {
     kActivationNone = 0,

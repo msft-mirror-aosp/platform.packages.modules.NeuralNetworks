@@ -32,10 +32,10 @@ java_defaults {
         type: "nano",
     },
     static_libs: [
+        "android.os.flags-aconfig-java-export",
         "android.app.ondeviceintelligence-aconfig-java",
         "modules-utils-backgroundthread",
         "modules-utils-handlerexecutor",
-        "modules-utils-infra",
         "modules-utils-shell-command-handler",
     ],
     min_sdk_version: "36",
