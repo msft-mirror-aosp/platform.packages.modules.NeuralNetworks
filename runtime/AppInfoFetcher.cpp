@@ -33,7 +33,6 @@
 
 #ifdef __ANDROID__
 #include <PackageInfo.h>
-#include <procpartition/procpartition.h>
 #endif  // __ANDROID__
 
 namespace android {
@@ -61,7 +60,7 @@ bool fetchAppPackageLocationInfo(uid_t uid, AppInfoFetcher::AppInfo* appInfo) {
 }  // namespace
 
 AppInfoFetcher::AppInfoFetcher()
-    : appInfo({.binaryPath = ::android::procpartition::getExe(getpid()),
+    : appInfo({.binaryPath = base::GetExecutablePath(),
                .appPackageName = "",
                .appIsSystemApp = false,
                .appIsOnVendorImage = false,
