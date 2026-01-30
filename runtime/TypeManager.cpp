@@ -27,6 +27,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,7 +35,6 @@
 #ifndef NN_COMPATIBILITY_LIBRARY_BUILD
 #ifdef __ANDROID__
 #include <PackageInfo.h>
-#include <procpartition/procpartition.h>
 #endif  // __ANDROID__
 
 #endif  // NN_COMPATIBILITY_LIBRARY_BUILD
