@@ -114,9 +114,6 @@ cc_defaults {
                 "libstatssocket",
                 "libvndksupport",
             ],
-            whole_static_libs: [
-                "libprocpartition",
-            ],
         },
         host: {
             cflags: [
