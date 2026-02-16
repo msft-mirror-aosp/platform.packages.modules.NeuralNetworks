@@ -55,7 +55,6 @@ package android.app.ondeviceintelligence {
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.app.ondeviceintelligence.FeatureDetails> CREATOR;
     field public static final int FEATURE_STATUS_AVAILABLE = 3; // 0x3
-    field @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") public static final int FEATURE_STATUS_DEPRECATED = 5; // 0x5
     field public static final int FEATURE_STATUS_DOWNLOADABLE = 1; // 0x1
     field public static final int FEATURE_STATUS_DOWNLOADING = 2; // 0x2
     field public static final int FEATURE_STATUS_SERVICE_UNAVAILABLE = 4; // 0x4
@@ -146,7 +145,6 @@ package android.app.ondeviceintelligence {
     method @NonNull public String getName();
     method public void getStatus(@NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.lang.Integer,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     field public static final int MODEL_STATUS_AVAILABLE = 3; // 0x3
-    field public static final int MODEL_STATUS_DEPRECATED = 4; // 0x4
     field public static final int MODEL_STATUS_DOWNLOADABLE = 1; // 0x1
     field public static final int MODEL_STATUS_DOWNLOADING = 2; // 0x2
     field public static final int MODEL_STATUS_UNAVAILABLE = 0; // 0x0
