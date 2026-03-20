@@ -1,6 +1,5 @@
 // Signature format: 6.0
 // - style=java
-// - overloaded-method-order=source
 // - strip-java-lang-prefix=legacy
 // - type-argument-spacing=legacy
 package android.app.ondeviceintelligence {
@@ -51,8 +50,8 @@ package android.app.ondeviceintelligence {
   }
 
   public final class FeatureDetails implements android.os.Parcelable {
-    ctor public FeatureDetails(int, @NonNull android.os.PersistableBundle);
     ctor public FeatureDetails(int);
+    ctor public FeatureDetails(int, @NonNull android.os.PersistableBundle);
     method public int describeContents();
     method @NonNull public android.os.PersistableBundle getFeatureDetailParams();
     method public int getFeatureStatus();
@@ -91,10 +90,10 @@ package android.app.ondeviceintelligence {
   }
 
   public class OnDeviceIntelligenceException extends java.lang.Exception {
-    ctor public OnDeviceIntelligenceException(int, @NonNull String, @NonNull android.os.PersistableBundle);
+    ctor public OnDeviceIntelligenceException(int);
     ctor public OnDeviceIntelligenceException(int, @NonNull android.os.PersistableBundle);
     ctor public OnDeviceIntelligenceException(int, @NonNull String);
-    ctor public OnDeviceIntelligenceException(int);
+    ctor public OnDeviceIntelligenceException(int, @NonNull String, @NonNull android.os.PersistableBundle);
     method public int getErrorCode();
     method @NonNull public android.os.PersistableBundle getErrorParams();
     field public static final int ON_DEVICE_INTELLIGENCE_SERVICE_UNAVAILABLE = 100; // 0x64
@@ -126,8 +125,8 @@ package android.app.ondeviceintelligence {
     method @Nullable @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public String getRemoteServicePackageName();
     method @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void getVersion(@NonNull java.util.concurrent.Executor, @NonNull java.util.function.LongConsumer);
     method @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void listEmbeddingModels(@NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.util.List<android.app.ondeviceintelligence.embedding.EmbeddingModel>,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
-    method @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void listFeatures(@NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.util.List<android.app.ondeviceintelligence.Feature>,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void listFeatures(@NonNull android.os.PersistableBundle, @NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.util.List<android.app.ondeviceintelligence.Feature>,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
+    method @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void listFeatures(@NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.util.List<android.app.ondeviceintelligence.Feature>,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void listImageDescriptionModels(@NonNull java.util.concurrent.Executor, @NonNull android.os.OutcomeReceiver<java.util.List<android.app.ondeviceintelligence.imagedescription.ImageDescriptionModel>,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void processRequest(@NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, int, @Nullable android.os.CancellationSignal, @Nullable android.app.ondeviceintelligence.ProcessingSignal, @NonNull java.util.concurrent.Executor, @NonNull android.app.ondeviceintelligence.ProcessingCallback);
     method @RequiresPermission(android.Manifest.permission.USE_ON_DEVICE_INTELLIGENCE) public void processRequestStreaming(@NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, int, @Nullable android.os.CancellationSignal, @Nullable android.app.ondeviceintelligence.ProcessingSignal, @NonNull java.util.concurrent.Executor, @NonNull android.app.ondeviceintelligence.StreamingProcessingCallback);
@@ -193,8 +192,8 @@ package android.app.ondeviceintelligence {
   }
 
   public final class TokenInfo implements android.os.Parcelable {
-    ctor public TokenInfo(long, @NonNull android.os.PersistableBundle);
     ctor public TokenInfo(long);
+    ctor public TokenInfo(long, @NonNull android.os.PersistableBundle);
     method public int describeContents();
     method public long getCount();
     method @NonNull public android.os.PersistableBundle getInfoParams();
@@ -343,8 +342,8 @@ package android.service.ondeviceintelligence {
     method @NonNull public abstract void onProcessRequest(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, int, @Nullable android.os.CancellationSignal, @Nullable android.app.ondeviceintelligence.ProcessingSignal, @NonNull android.app.ondeviceintelligence.ProcessingCallback);
     method @NonNull public abstract void onProcessRequestStreaming(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, int, @Nullable android.os.CancellationSignal, @Nullable android.app.ondeviceintelligence.ProcessingSignal, @NonNull android.app.ondeviceintelligence.StreamingProcessingCallback);
     method @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public void onRegisterInferenceServiceLifecycleListener(@NonNull android.service.ondeviceintelligence.OnDeviceSandboxedInferenceService.LifecycleListener);
-    method @NonNull public abstract void onTokenInfoRequest(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, @Nullable android.os.CancellationSignal, @NonNull android.os.OutcomeReceiver<android.app.ondeviceintelligence.TokenInfo,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") public void onTokenInfoRequest(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.app.ondeviceintelligence.Content, @Nullable android.os.CancellationSignal, @NonNull android.os.OutcomeReceiver<android.app.ondeviceintelligence.TokenInfo,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
+    method @NonNull public abstract void onTokenInfoRequest(int, @NonNull android.app.ondeviceintelligence.Feature, @NonNull android.os.Bundle, @Nullable android.os.CancellationSignal, @NonNull android.os.OutcomeReceiver<android.app.ondeviceintelligence.TokenInfo,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method public abstract void onUpdateProcessingState(@NonNull android.os.Bundle, @NonNull android.os.OutcomeReceiver<android.os.PersistableBundle,android.app.ondeviceintelligence.OnDeviceIntelligenceException>);
     method public final java.io.FileInputStream openFileInput(@NonNull String) throws java.io.FileNotFoundException;
     field @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public static final String KEY_DEVICE_CONFIG_UPDATE = "android.service.ondeviceintelligence.KEY_DEVICE_CONFIG_UPDATE";
