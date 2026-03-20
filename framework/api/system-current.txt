@@ -1,6 +1,5 @@
 // Signature format: 6.0
 // - style=java
-// - flagged-api-inheritance=none
 // - overloaded-method-order=source
 // - strip-java-lang-prefix=legacy
 // - type-argument-spacing=legacy
@@ -76,7 +75,7 @@ package android.app.ondeviceintelligence {
     field @NonNull public static final android.os.Parcelable.Creator<android.app.ondeviceintelligence.InferenceInfo> CREATOR;
   }
 
-  public static final class InferenceInfo.Builder {
+  @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_25q4") public static final class InferenceInfo.Builder {
     ctor public InferenceInfo.Builder(int);
     method @NonNull public android.app.ondeviceintelligence.InferenceInfo build();
     method @NonNull public android.app.ondeviceintelligence.InferenceInfo.Builder setEndTimeMillis(long);
@@ -297,7 +296,7 @@ package android.app.ondeviceintelligence.imagedescription {
     field @NonNull public static final android.os.Parcelable.Creator<android.app.ondeviceintelligence.imagedescription.ImageDescriptionResponse> CREATOR;
   }
 
-  public static final class ImageDescriptionResponse.ImageDescription implements android.os.Parcelable {
+  @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") public static final class ImageDescriptionResponse.ImageDescription implements android.os.Parcelable {
     ctor public ImageDescriptionResponse.ImageDescription(@NonNull CharSequence, float);
     method public int describeContents();
     method @NonNull public CharSequence getDescription();
