@@ -1,4 +1,9 @@
-// Signature format: 2.0
+// Signature format: 6.0
+// - style=java
+// - flagged-api-inheritance=none
+// - overloaded-method-order=source
+// - strip-java-lang-prefix=legacy
+// - type-argument-spacing=legacy
 package android.app.ondeviceintelligence {
 
   @FlaggedApi("android.app.ondeviceintelligence.flags.on_device_intelligence_26q2") public final class Content implements java.lang.AutoCloseable android.os.Parcelable {
